@@ -8,7 +8,7 @@ const CartNavigator = ({ currentStep }) => {
   ];
 
   return (
-    <div className="md:mt-7 mt-24 left-0 right-0 z-20 flex flex-row items-center justify-center bg-gray-100 p-2 rounded-full max-w-[90%] md:max-w-4xl mx-auto">
+    <div className="md:mt-7 lg:mt-2 -mt-10 left-0 right-0 z-20 flex flex-row items-center justify-center bg-gray-100 p-2 rounded-full max-w-[90%] md:max-w-4xl mx-auto">
       {steps.map((step, index) => (
         <div key={step.id} className="flex items-center relative mx-0.5 md:mx-2">
           <div className="flex flex-row items-center space-x-1 md:space-x-4">

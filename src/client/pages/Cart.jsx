@@ -457,7 +457,7 @@ function Cart() {
                 <CartNavigator currentStep={currentStep} />
                 {currentStep === 1 && (
                     // Original layout for cart view
-                    <div className="max-w-7xl mx-auto flex flex-col md:flex-row gap-4 md:gap-6 px-4 py-6 pt-28 md:p-5">
+                    <div className="max-w-7xl mx-auto flex flex-col md:flex-row gap-4 md:gap-6 px-4 py-6 pt-28 lg:mt-10 md:p-5">
                         <div className="w-full md:w-3/5 transition-all duration-300 ease-in-out ">
                             <CartItemDemo
                                 cartItems={cartItems}

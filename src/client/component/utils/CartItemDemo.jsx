@@ -4,7 +4,7 @@ import CartItem from "./CartItem.jsx";
 
 const CartItemDemo = ({ cartItems, onRemove, onIncreaseQuantity, onDecreaseQuantity, removingItems = [] }) => {
     return (
-        <div className="flex flex-col space-y-4">
+        <div className="flex flex-col -mt-20 lg:mt-0 space-y-4">
             <div className="bg-white rounded-lg border border-gray-200 p-4 md:p-6">
                 <h2 className="text-lg md:text-xl font-bold mb-4">Shopping Cart</h2>
 
