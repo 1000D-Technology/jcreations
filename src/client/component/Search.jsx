@@ -351,17 +351,63 @@ function Search({ isOpen, onClose, initialCategory }) {
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 pb-4">
                                             {/* Category filter */}
                                             <div>
-                                                {/* Category filter content */}
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                                                <select
+                                                    value={categoryId}
+                                                    onChange={(e) => setCategoryId(e.target.value)}
+                                                    className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#F7A313] focus:border-transparent"
+                                                >
+                                                    <option value="">All Categories</option>
+                                                    {categories.map(category => (
+                                                        <option key={category.id} value={category.id}>
+                                                            {category.name}
+                                                        </option>
+                                                    ))}
+                                                </select>
                                             </div>
 
                                             {/* Status filter */}
                                             <div>
-                                                {/* Status filter content */}
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                                                <select
+                                                    value={status}
+                                                    onChange={(e) => setStatus(e.target.value)}
+                                                    className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#F7A313] focus:border-transparent"
+                                                >
+                                                    <option value="">All Status</option>
+                                                    <option value="in_stock">In Stock</option>
+                                                    <option value="out_of_stock">Out of Stock</option>
+                                                    <option value="limited">Limited Stock</option>
+                                                </select>
                                             </div>
 
                                             {/* Price range filter */}
                                             <div className="md:col-span-2">
-                                                {/* Price range filter content */}
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">Price Range</label>
+                                                <div className="flex items-center gap-4">
+                                                    <div className="flex-1">
+                                                        <label className="block text-xs text-gray-500 mb-1">Min</label>
+                                                        <input
+                                                            type="number"
+                                                            min="0"
+                                                            max="10000"
+                                                            value={priceRange[0]}
+                                                            onChange={(e) => handlePriceChange(e, 0)}
+                                                            className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#F7A313] focus:border-transparent"
+                                                        />
+                                                    </div>
+                                                    <div className="flex-1">
+                                                        <label className="block text-xs text-gray-500 mb-1">Max</label>
+                                                        <input
+                                                            type="number"
+                                                            min="0"
+                                                            max="10000"
+                                                            value={priceRange[1]}
+                                                            onChange={(e) => handlePriceChange(e, 1)}
+                                                            className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#F7A313] focus:border-transparent"
+                                                        />
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
 

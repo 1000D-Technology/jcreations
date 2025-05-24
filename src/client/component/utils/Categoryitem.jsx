@@ -1,16 +1,15 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from "../../../utils/axios.js";
-import { useNavigate } from 'react-router-dom';
 
-function Categoryitem({ onCategoryClick }) {
+
+function Categoryitem() {
     const [categories, setCategories] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [selectedCategory, setSelectedCategory] = useState(null);
     const scrollRef = useRef(null);
     const DEFAULT_IMAGE = "/placeholder.png";
-    const navigate = useNavigate();
+
 
     // Fetch categories from API
     useEffect(() => {
@@ -28,22 +27,6 @@ function Categoryitem({ onCategoryClick }) {
 
         fetchCategories();
     }, []);
-
-    // Handle category click with stopPropagation to prevent search bar opening
-    const handleCategoryClick = (category, e) => {
-        // Stop event propagation to prevent search bar from opening
-        if (e) {
-            e.stopPropagation();
-            e.preventDefault();
-        }
-
-        setSelectedCategory(category.id);
-
-        // Call the parent component's handler if provided
-        if (onCategoryClick) {
-            onCategoryClick(category);
-        }
-    };
 
     // Get image source with fallback
     const getImageSrc = (category) => {
@@ -185,35 +168,26 @@ function Categoryitem({ onCategoryClick }) {
                         variants={item}
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
-                        onClick={(e) => handleCategoryClick(category, e)}
                     >
                         <motion.div
-                            className={`rounded-full flex flex-col items-center justify-center w-36 h-36 p-4 ${
-                                selectedCategory === category.id
-                                    ? "bg-[#F7A313]/20 border-2 border-[#F7A313]"
-                                    : "bg-[#FFF7E6] border-[#F7A313] border-2 shadow-gray-200"
-                            }`}
+                            className="rounded-full flex flex-col items-center justify-center w-36 h-36 p-4 bg-[#FFF7E6] border-[#F7A313] border-2 shadow-gray-200"
                             whileHover={{
                                 boxShadow: "0px 8px 20px rgba(247, 163, 19, 0.3)",
                                 y: -5
                             }}
                             transition={{ type: "spring", stiffness: 300 }}
                             initial={false}
-                            animate={selectedCategory === category.id ?
-                                { scale: [1, 1.08, 1], rotateZ: [0, 5, -5, 0] } :
-                                { scale: 1 }}
+                            animate={{ scale: 1 }}
                         >
                             <motion.img
                                 src={getImageSrc(category)}
                                 alt={category.name}
                                 className="w-16 h-16 object-contain"
-                                animate={selectedCategory === category.id ?
-                                    { scale: [1, 1.2, 1], rotate: [0, 10, 0, -10, 0] } :
-                                    { scale: 1, rotate: 0 }}
+                                animate={{ scale: 1, rotate: 0 }}
                                 transition={{
-                                    duration: selectedCategory === category.id ? 0.8 : 5,
+                                    duration: 5,
                                     repeat: Infinity,
-                                    repeatDelay: selectedCategory === category.id ? 0 : 2
+                                    repeatDelay: 2
                                 }}
                                 onError={(e) => {
                                     e.target.src = DEFAULT_IMAGE;
@@ -222,14 +196,10 @@ function Categoryitem({ onCategoryClick }) {
                             />
                         </motion.div>
                         <motion.span
-                            className={`mt-2 text-center font-medium ${
-                                selectedCategory === category.id ? "text-[#F7A313]" : ""
-                            }`}
+                            className="mt-2 text-center font-medium"
                             whileHover={{ color: "#F7A313" }}
                             initial={false}
-                            animate={selectedCategory === category.id ?
-                                { fontWeight: 700, scale: 1.1 } :
-                                { fontWeight: 500, scale: 1 }}
+                            animate={{ fontWeight: 500, scale: 1 }}
                         >
                             {category.name}
                         </motion.span>
@@ -252,26 +222,19 @@ function Categoryitem({ onCategoryClick }) {
                         key={category.id || index}
                         variants={item}
                         whileTap={{ scale: 0.95 }}
-                        onClick={(e) => handleCategoryClick(category, e)}
                     >
                         <motion.div
-                            className={`px-4 py-2 rounded-full ${
-                                selectedCategory === category.id
-                                    ? "bg-[#F7A313] text-white"
-                                    : "bg-[#FFF7E6] border border-[#F7A313]/30 text-gray-800"
-                            }`}
+                            className="px-4 py-2 rounded-full bg-[#FFF7E6] border border-[#F7A313]/30 text-gray-800"
                             whileHover={{
                                 boxShadow: "0px 5px 15px rgba(247, 163, 19, 0.2)",
                                 scale: 1.05
                             }}
                             initial={false}
-                            animate={selectedCategory === category.id ?
-                                { scale: [1, 1.1, 1] } :
-                                { scale: 1 }}
+                            animate={{ scale: 1 }}
                         >
                             <motion.span
                                 className="text-sm font-medium"
-                                whileHover={{ color: selectedCategory === category.id ? "#FFFFFF" : "#F7A313" }}
+                                whileHover={{ color: "#F7A313" }}
                             >
                                 {category.name}
                             </motion.span>
