@@ -75,7 +75,7 @@ function Hero() {
 
     return (
         <>
-            <section className="flex justify-center">
+            <section className="flex justify-center mt-10">
                 <motion.div
                     className={'max-w-7xl w-full lg:flex md:flex justify-between hidden px-2'}
                     initial="hidden"
@@ -191,20 +191,20 @@ function Hero() {
                                     }}
                                 />
                             )}
-                            <div
-                                className="absolute top-8 right-8 bg-white p-2 rounded-lg shadow-md text-sm font-semibold text-gray-700">
-                                <div
-                                    className="absolute -top-3 -right-3 stamp text-white text-xs p-4 rounded-full font-bold">
-                                    %
-                                </div>
-                                <span className="text-2xl font-bold text-[#F7A313]">10%</span>
-                                <p className="text-sm font-medium">Discount <br/></p>
-                            </div>
-                            <div
-                                className="absolute bottom-4 left-4 p-2 rounded-lg shadow-md text-sm font-semibold text-gray-700">
-                                <span className={'font-bold leading-tight text-white mt-6 0 text-2xl'}>Be The <span
-                                    className={'text-[#F7A313]'}>First</span><br/> Delivery &<br/> Easy Pick Up</span>
-                            </div>
+                            {/*<div*/}
+                            {/*    className="absolute top-8 right-8 bg-white p-2 rounded-lg shadow-md text-sm font-semibold text-gray-700">*/}
+                            {/*    <div*/}
+                            {/*        className="absolute -top-3 -right-3 stamp text-white text-xs p-4 rounded-full font-bold">*/}
+                            {/*        %*/}
+                            {/*    </div>*/}
+                            {/*    <span className="text-2xl font-bold text-[#F7A313]">10%</span>*/}
+                            {/*    <p className="text-sm font-medium">Discount <br/></p>*/}
+                            {/*</div>*/}
+                            {/*<div*/}
+                            {/*    className="absolute bottom-4 left-4 p-2 rounded-lg shadow-md text-sm font-semibold text-gray-700">*/}
+                            {/*    <span className={'font-bold leading-tight text-white mt-6 0 text-2xl'}>Be The <span*/}
+                            {/*        className={'text-[#F7A313]'}>First</span><br/> Delivery &<br/> Easy Pick Up</span>*/}
+                            {/*</div>*/}
                             <button
                                 onClick={scrollToProducts}
                                 className="absolute bottom-4 right-4 bg-[#F7A313] p-2 px-4 rounded-tl-3xl text-sm rounded-br-3xl text-white flex items-center gap-2 cursor-pointer">

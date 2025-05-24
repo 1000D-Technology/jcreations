@@ -21,6 +21,7 @@ import Terms from "./client/component/Terms.jsx";
 import Invoices from "./client/pages/Invoices.jsx";
 
 
+
 function App() {
     const location = useLocation();
     const isAuthPage = location.pathname === "/signin" || location.pathname === "/adminlogin";
@@ -41,7 +42,7 @@ function App() {
                 reverseOrder={false}
             />
 
-            <main className={`flex-grow ${!isAuthPage && !isDashboardPage ? 'pt-16' : ''}`}>
+            <main className={`flex-grow ${!isAuthPage && !isDashboardPage ? 'pt-4' : ''}`}>
                 <Routes location={location} key={location.pathname}>
                     {/* Public client routes */}
                     <Route path="/" element={<Home />} />
@@ -49,11 +50,13 @@ function App() {
                     <Route path="/order" element={<Order />} />
                     <Route path="/account" element={<Account />} />
                     <Route path="/signin" element={<SignIn />} />
+
                     <Route path="/singleproduct/:id" element={<SingleProduct />} />
                     <Route path="/refund-policy" element={<Refund />} />
                     <Route path="/privacy-policy" element={<Privacy />} />
                     <Route path="/terms-conditions" element={<Terms />} />
                     <Route path="/invoice/:id" element={<Invoices />} />
+
 
                     {/* Admin routes */}
                     <Route path="/adminlogin" element={<AdminLogin />} />

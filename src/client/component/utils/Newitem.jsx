@@ -38,7 +38,7 @@ function Newitem({ product }) {
                 />
                 {product.discount_percentage > 0 && (
                     <motion.span
-                        className="absolute top-4 right-0 bg-[#F7A313] text-white px-4 py-1 text-sm rounded-2xl"
+                        className="absolute top-4 right-0 bg-[#F7A313] text-white px-4 py-1 text-sm rounded-tl-2xl"
                         whileHover={{
                             backgroundColor: "#e69200",
                             scale: 1.05
@@ -55,9 +55,7 @@ function Newitem({ product }) {
                 >
                     {product.name}
                 </motion.h3>
-                <p className="text-[#B7B3B3] text-[10px] mt-1 text-justify">
-                    {truncateDescription(product.description, 50)}
-                </p>
+
                 <div className="flex gap-3 items-center my-1">
                     <motion.span
                         className="text-xl font-semibold text-[#F7A313]"

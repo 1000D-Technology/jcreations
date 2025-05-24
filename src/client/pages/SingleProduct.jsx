@@ -164,7 +164,7 @@ function SingleProduct() {
 
     return (
         <>
-            <section className="pt-10 flex justify-center">
+            <section className="pt-0 -mt-4 lg:mt-2 flex justify-center">
                 <div className="max-w-7xl w-full mt-10 lg:mt-0 px-5 lg:px-2">
                     <div className="flex items-center gap-2 cursor-pointer" onClick={() => window.history.back()}>
                         <span className="font-semibold text-sm text-gray-500"><FaArrowLeft /></span>
