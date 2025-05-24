@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { IoMdClose } from 'react-icons/io';
-import { FiSearch, FiFilter } from 'react-icons/fi';
 import api from "../../utils/axios.js";
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
@@ -46,17 +45,15 @@ function SearchByCategory({ isOpen, onClose, initialCategory }) {
     const abortControllerRef = useRef(null);
     const hasInitialSearchRef = useRef(false);
 
-// Modify this useEffect in SearchByCategory.jsx
+    // Updated useEffect to use forcedCategoryId
     useEffect(() => {
         if (isOpen && initialCategory) {
             setCategoryId(initialCategory);
             searchParamsRef.current.categoryId = initialCategory;
 
-            // Always search when category is selected - remove the hasInitialSearchRef check
+            // Pass initialCategory directly to searchProducts
             setLoading(true);
-            setTimeout(() => {
-                searchProducts(false);
-            }, 100);
+            searchProducts(false, initialCategory);
 
             // Fetch category details
             fetchCategoryDetails(initialCategory);
@@ -131,8 +128,8 @@ function SearchByCategory({ isOpen, onClose, initialCategory }) {
         }
     }, [isOpen, initialCategory]);
 
-    // Search function
-    const searchProducts = useCallback(async (isLoadingMore = false) => {
+    // Updated searchProducts function with forcedCategoryId parameter
+    const searchProducts = useCallback(async (isLoadingMore = false, forcedCategoryId = null) => {
         if (!isOpen) return;
 
         // Cancel previous request
@@ -153,7 +150,11 @@ function SearchByCategory({ isOpen, onClose, initialCategory }) {
             // Build query params
             const queryParams = {};
             if (searchQuery.trim()) queryParams.q = searchQuery.trim();
-            if (categoryId) queryParams.category_id = categoryId;
+
+            // Use forcedCategoryId if provided, otherwise use categoryId state
+            const effectiveCategoryId = forcedCategoryId || categoryId;
+            if (effectiveCategoryId) queryParams.category_id = effectiveCategoryId;
+
             if (priceRange[0] > 0) queryParams.min_price = priceRange[0];
             if (priceRange[1] < 10000) queryParams.max_price = priceRange[1];
             if (status) queryParams.status = status;
@@ -161,7 +162,7 @@ function SearchByCategory({ isOpen, onClose, initialCategory }) {
             // Save current search params
             searchParamsRef.current = {
                 query: searchQuery.trim(),
-                categoryId,
+                categoryId: effectiveCategoryId,
                 priceRange: [...priceRange],
                 status
             };
@@ -232,30 +233,6 @@ function SearchByCategory({ isOpen, onClose, initialCategory }) {
         }
     }, [searchLimit, isOpen, loading, loadingMore, searchProducts]);
 
-    // Handle form submission
-    const handleSubmit = (e) => {
-        e.preventDefault();
-        searchProducts(false);
-    };
-
-    // Handle price range changes
-    const handlePriceChange = (e, index) => {
-        const value = parseInt(e.target.value) || 0;
-        setPriceRange(prev => {
-            const newRange = [...prev];
-            newRange[index] = value;
-
-            // Ensure min <= max
-            if (index === 0 && value > newRange[1]) {
-                newRange[1] = value;
-            } else if (index === 1 && value < newRange[0]) {
-                newRange[0] = value;
-            }
-
-            return newRange;
-        });
-    };
-
     // Handle recent search click
     const handleRecentSearchClick = (search) => {
         setSearchQuery(search);
@@ -288,16 +265,13 @@ function SearchByCategory({ isOpen, onClose, initialCategory }) {
                         </div>
 
                         {/* Search and filters */}
-                        <div className="p-5  sticky top-16 bg-white z-10">
+                        <div className="p-5 sticky top-16 bg-white z-10">
                             {/* Category description */}
                             {selectedCategory && selectedCategory.description && (
                                 <div className="mb-4 text-gray-600">
                                     {selectedCategory.description}
                                 </div>
                             )}
-
-
-
                         </div>
 
                         {/* Results section */}
