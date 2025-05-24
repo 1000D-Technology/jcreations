@@ -46,23 +46,20 @@ function SearchByCategory({ isOpen, onClose, initialCategory }) {
     const abortControllerRef = useRef(null);
     const hasInitialSearchRef = useRef(false);
 
-    // Set category ID when initialCategory prop changes
+// Modify this useEffect in SearchByCategory.jsx
     useEffect(() => {
         if (isOpen && initialCategory) {
             setCategoryId(initialCategory);
             searchParamsRef.current.categoryId = initialCategory;
 
-            // Load products immediately when modal opens
-            if (!hasInitialSearchRef.current) {
-                hasInitialSearchRef.current = true;
-                setLoading(true);
-                setTimeout(() => {
-                    searchProducts(false);
-                }, 100);
+            // Always search when category is selected - remove the hasInitialSearchRef check
+            setLoading(true);
+            setTimeout(() => {
+                searchProducts(false);
+            }, 100);
 
-                // Fetch category details
-                fetchCategoryDetails(initialCategory);
-            }
+            // Fetch category details
+            fetchCategoryDetails(initialCategory);
         } else if (!isOpen) {
             // Reset when modal closes
             hasInitialSearchRef.current = false;

@@ -31,8 +31,14 @@ function Categoryitem() {
 
     // Handle category click
     const handleCategoryClick = (categoryId) => {
-        setSelectedCategory(categoryId);
-        setShowCategoryModal(true);
+        // Reset selectedCategory to force re-render
+        setSelectedCategory(null);
+
+        // Delay setting the category to ensure re-render
+        setTimeout(() => {
+            setSelectedCategory(categoryId);
+            setShowCategoryModal(true);
+        }, 0);
     };
 
     // Handle modal close
@@ -252,12 +258,13 @@ function Categoryitem() {
             </motion.div>
 
             {/* Category Products Modal */}
+
             <SearchByCategory
+                key={selectedCategory} // Add this line
                 isOpen={showCategoryModal}
                 onClose={handleCloseModal}
                 initialCategory={selectedCategory}
             />
-
             {/* Custom CSS */}
             <style jsx>{`
                 .scrollbar-hide::-webkit-scrollbar {
