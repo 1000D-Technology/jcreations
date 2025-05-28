@@ -9,6 +9,7 @@ import { BsBoxes } from "react-icons/bs";
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import useAuthStore from '../../stores/authStore';
+import {TbCategory2} from "react-icons/tb";
 
 export default function Sidebar() {
     const navigate = useNavigate();
@@ -131,6 +132,7 @@ export default function Sidebar() {
                     <SidebarItem to="/dashboard/products" icon={<BsBoxes className="w-5 h-5" />} label="Products" />
                     <SidebarItem to="/dashboard/orders" icon={<FaOpencart className="w-5 h-5" />} label="Orders" />
                     <SidebarItem to="/dashboard/banners" icon={<CiImageOn className="w-5 h-5" />} label="Banners" />
+                    <SidebarItem to="/dashboard/category" icon={<TbCategory2  className="w-5 h-5" />} label="Category" />
                     <SidebarItem to="/dashboard/settings" icon={<IoSettingsOutline className="w-5 h-5" />} label="Settings" />
                 </nav>
             </div>

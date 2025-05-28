@@ -6,6 +6,7 @@ import Orders from '../component/Orders.jsx';
 import Banners from '../component/Banners.jsx';
 import Setting from '../component/Setting.jsx';
 import DashboardMain from "../component/DashboardMain.jsx";
+import Category from "../component/utils/Category.jsx";
 
 function Dashboard() {
     return (
@@ -17,6 +18,7 @@ function Dashboard() {
                     <Route path="products" element={<Products />} />
                     <Route path="orders" element={<Orders />} />
                     <Route path="banners" element={<Banners />} />
+                    <Route path="category" element={<Category />} />
                     <Route path="settings" element={<Setting />} />
                 </Routes>
             </div>
