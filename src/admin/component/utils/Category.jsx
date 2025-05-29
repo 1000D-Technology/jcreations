@@ -107,7 +107,7 @@ function Category() {
         setAddingCategory(true);
         const formData = new FormData();
         formData.append('name', currentCategory.name);
-        formData.append('status', currentCategory.active);
+
 
         if (currentCategory.image instanceof File) {
             formData.append('img', currentCategory.image);
@@ -163,19 +163,24 @@ function Category() {
         try {
             setTogglingCategories(prev => [...prev, category.id]);
 
-            const response = await api.patch(`/admin/categories/${category.id}/toggle-status`);
+            // Send a proper JSON body with boolean status
+            const response = await api.patch(`/admin/categories/${category.id}/toggle-status`, {
+                status: !category.active // Explicitly send a boolean value
+            });
 
             const updatedCategory = response.data;
+            // Ensure status is boolean
+            const isActive = Boolean(updatedCategory.status);
 
             setCategories(prevCategories =>
                 prevCategories.map(cat =>
                     cat.id === category.id
-                        ? { ...cat, active: updatedCategory.status }
+                        ? { ...cat, active: isActive }
                         : cat
                 )
             );
 
-            toast.success(`Category ${updatedCategory.status ? 'activated' : 'deactivated'} successfully`);
+            toast.success(`Category ${isActive ? 'activated' : 'deactivated'} successfully`);
         } catch (error) {
             toast.error('Failed to update category status');
             console.error(error);

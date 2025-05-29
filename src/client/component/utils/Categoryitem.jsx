@@ -17,7 +17,9 @@ function Categoryitem() {
         const fetchCategories = async () => {
             try {
                 const response = await api.get('/categories');
-                setCategories(response.data);
+                // Filter to only include active categories (status = true)
+                const activeCategories = response.data.filter(category => category.status === true);
+                setCategories(activeCategories);
             } catch (error) {
                 console.error('Error fetching categories:', error);
                 setError('Failed to load categories');
@@ -162,8 +164,9 @@ function Categoryitem() {
                             <motion.div
                                 className="rounded-full flex flex-col items-center justify-center w-36 h-36 p-4 bg-[#FFF7E6] border-[#F7A313] border-2 shadow-gray-200"
                                 whileHover={{
-                                    boxShadow: "0px 8px 20px rgba(247, 163, 19, 0.3)",
-                                    y: -5
+                                    borderColor: "#F7A313",
+                                    boxShadow: "0px 4px 20px rgba(247, 163, 19, 0.25)",
+                                    scale: 1.03
                                 }}
                                 transition={{ type: "spring", stiffness: 300 }}
                                 initial={false}
@@ -172,17 +175,8 @@ function Categoryitem() {
                                 <motion.img
                                     src={getImageSrc(category)}
                                     alt={category.name}
-                                    className="w-16 h-16 object-contain"
-                                    animate={{ scale: 1, rotate: 0 }}
-                                    transition={{
-                                        duration: 5,
-                                        repeat: Infinity,
-                                        repeatDelay: 2
-                                    }}
-                                    onError={(e) => {
-                                        e.target.src = DEFAULT_IMAGE;
-                                        e.target.onerror = null;
-                                    }}
+                                    className="w-20 h-20 object-contain"
+                                    onError={(e) => { e.target.src = DEFAULT_IMAGE }}
                                 />
                             </motion.div>
                             <motion.span
@@ -217,15 +211,15 @@ function Categoryitem() {
                             <motion.div
                                 className="px-4 py-2 rounded-full bg-[#FFF7E6] border border-[#F7A313]/30 text-gray-800"
                                 whileHover={{
-                                    boxShadow: "0px 5px 15px rgba(247, 163, 19, 0.2)",
+                                    backgroundColor: "#F7A313",
+                                    color: "white",
                                     scale: 1.05
                                 }}
                                 initial={false}
                                 animate={{ scale: 1 }}
                             >
                                 <motion.span
-                                    className="text-sm font-medium"
-                                    whileHover={{ color: "#F7A313" }}
+                                    className="whitespace-nowrap text-sm font-medium"
                                 >
                                     {category.name}
                                 </motion.span>
@@ -258,13 +252,13 @@ function Categoryitem() {
             </motion.div>
 
             {/* Category Products Modal */}
-
             <SearchByCategory
-                key={selectedCategory} // Add this line
+                key={selectedCategory}
                 isOpen={showCategoryModal}
                 onClose={handleCloseModal}
                 initialCategory={selectedCategory}
             />
+
             {/* Custom CSS */}
             <style jsx>{`
                 .scrollbar-hide::-webkit-scrollbar {
