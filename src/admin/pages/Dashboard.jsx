@@ -6,7 +6,7 @@ import Orders from '../component/Orders.jsx';
 import Banners from '../component/Banners.jsx';
 import Setting from '../component/Setting.jsx';
 import DashboardMain from "../component/DashboardMain.jsx";
-import Category from "../component/utils/Category.jsx";
+import Category from "../component/Category.jsx";
 
 function Dashboard() {
     return (

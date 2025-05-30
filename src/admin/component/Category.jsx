@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { FaEdit, FaToggleOn, FaToggleOff, FaImage, FaChevronDown, FaChevronUp } from 'react-icons/fa';
-import api from '../../../utils/axios';
+import api from '../../utils/axios';
 import toast from 'react-hot-toast';
 
 function Category() {
@@ -107,7 +107,7 @@ function Category() {
         setAddingCategory(true);
         const formData = new FormData();
         formData.append('name', currentCategory.name);
-
+        formData.append('status', currentCategory.active);
 
         if (currentCategory.image instanceof File) {
             formData.append('img', currentCategory.image);
@@ -163,24 +163,19 @@ function Category() {
         try {
             setTogglingCategories(prev => [...prev, category.id]);
 
-            // Send a proper JSON body with boolean status
-            const response = await api.patch(`/admin/categories/${category.id}/toggle-status`, {
-                status: !category.active // Explicitly send a boolean value
-            });
+            const response = await api.patch(`/admin/categories/${category.id}/toggle-status`);
 
             const updatedCategory = response.data;
-            // Ensure status is boolean
-            const isActive = Boolean(updatedCategory.status);
 
             setCategories(prevCategories =>
                 prevCategories.map(cat =>
                     cat.id === category.id
-                        ? { ...cat, active: isActive }
+                        ? { ...cat, active: updatedCategory.status }
                         : cat
                 )
             );
 
-            toast.success(`Category ${isActive ? 'activated' : 'deactivated'} successfully`);
+            toast.success(`Category ${updatedCategory.status ? 'activated' : 'deactivated'} successfully`);
         } catch (error) {
             toast.error('Failed to update category status');
             console.error(error);

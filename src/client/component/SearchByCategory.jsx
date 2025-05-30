@@ -6,8 +6,10 @@ import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import SearchItem from "./utils/Searchitem.jsx";
 import { createPortal } from 'react-dom';
+import Category from "./Category.jsx";
+import Categoryitem from "./utils/Categoryitem.jsx";
 
-function SearchByCategory({ isOpen, onClose, initialCategory }) {
+function SearchByCategory({ isOpen, onClose, initialCategory ,onCategoryClick}) {
     const navigate = useNavigate();
     // Search state
     const [searchQuery, setSearchQuery] = useState('');
@@ -241,6 +243,7 @@ function SearchByCategory({ isOpen, onClose, initialCategory }) {
     return createPortal(
         <AnimatePresence>
             {isOpen && (
+
                 <motion.div
                     className="fixed inset-0 bg-white z-50 flex justify-center overflow-auto"
                     initial={{ opacity: 0 }}
@@ -248,19 +251,29 @@ function SearchByCategory({ isOpen, onClose, initialCategory }) {
                     exit={{ opacity: 0 }}
                     transition={{ duration: 0.2 }}
                 >
+
                     <div className="max-w-7xl w-full flex flex-col">
+                        {/* Fixed container for categories positioned below header */}
+                        <div className="fixed left-0 right-0 z-40 bg-white py-3 md:hidden">
+                            <Categoryitem onCategoryClick={onCategoryClick}/>
+                        </div>
                         {/* Header */}
-                        <div className="flex justify-between items-center p-5 border-b sticky top-0 bg-white z-10">
+                        <div className="flex justify-between items-center p-5 border-b sticky  bg-white z-10 mt-20 md:mt-0">
+
+
+
+
+
                             <h2 className="text-xl font-medium">
                                 {selectedCategory ? selectedCategory.name : 'Browse Categories'}
                             </h2>
                             <motion.button
                                 onClick={onClose}
-                                whileHover={{ scale: 1.1 }}
-                                whileTap={{ scale: 0.95 }}
+                                whileHover={{scale: 1.1}}
+                                whileTap={{scale: 0.95}}
                                 className="p-2 rounded-full hover:bg-gray-100"
                             >
-                                <IoMdClose className="text-xl" />
+                                <IoMdClose className="text-xl"/>
                             </motion.button>
                         </div>
 
