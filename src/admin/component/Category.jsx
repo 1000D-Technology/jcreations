@@ -107,7 +107,7 @@ function Category() {
         setAddingCategory(true);
         const formData = new FormData();
         formData.append('name', currentCategory.name);
-        formData.append('status', currentCategory.active);
+        
 
         if (currentCategory.image instanceof File) {
             formData.append('img', currentCategory.image);
