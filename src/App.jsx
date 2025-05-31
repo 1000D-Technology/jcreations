@@ -19,14 +19,15 @@ import Refund from "./client/component/Refund.jsx";
 import Privacy from "./client/component/Privacy.jsx";
 import Terms from "./client/component/Terms.jsx";
 import Invoices from "./client/pages/Invoices.jsx";
-
-
+import Category from "./client/component/Category.jsx";
+import SearchByCategory from "./client/component/SearchByCategory.jsx";
 
 function App() {
     const location = useLocation();
     const isAuthPage = location.pathname === "/signin" || location.pathname === "/adminlogin";
-    const isSingleProductPage = location.pathname === "/singleproduct";
+    const isSingleProductPage = location.pathname.includes("/singleproduct");
     const isDashboardPage = location.pathname.startsWith("/dashboard");
+    const isCategoryPage = location.pathname.startsWith("/category/");
     const initAuth = useAuthStore(state => state.initAuth);
 
     // Initialize authentication when app loads
@@ -36,13 +37,13 @@ function App() {
 
     return (
         <div className="flex flex-col min-h-screen">
-            {!isAuthPage && !isDashboardPage && <Header />}
+            {!isAuthPage && !isDashboardPage && !isCategoryPage && <Header />}
             <Toaster
                 position="top-right"
                 reverseOrder={false}
             />
 
-            <main className={`flex-grow ${!isAuthPage && !isDashboardPage ? 'pt-4' : ''}`}>
+            <main className={`flex-grow ${!isAuthPage && !isDashboardPage && !isCategoryPage ? 'pt-4' : ''}`}>
                 <Routes location={location} key={location.pathname}>
                     {/* Public client routes */}
                     <Route path="/" element={<Home />} />
@@ -56,7 +57,7 @@ function App() {
                     <Route path="/privacy-policy" element={<Privacy />} />
                     <Route path="/terms-conditions" element={<Terms />} />
                     <Route path="/invoice/:id" element={<Invoices />} />
-
+                    <Route path="/category/:category" element={<SearchByCategory />} />
 
                     {/* Admin routes */}
                     <Route path="/adminlogin" element={<AdminLogin />} />
@@ -68,8 +69,8 @@ function App() {
                 </Routes>
             </main>
 
-            {!isAuthPage && !isSingleProductPage && !isDashboardPage && <BottomNavigator />}
-            {!isAuthPage && !isSingleProductPage && !isDashboardPage && <Footer />}
+            {!isAuthPage && !isSingleProductPage && !isDashboardPage && !isCategoryPage && <BottomNavigator />}
+            {!isAuthPage && !isSingleProductPage && !isDashboardPage && !isCategoryPage && <Footer />}
         </div>
     );
 }
