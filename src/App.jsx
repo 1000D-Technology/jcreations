@@ -12,7 +12,7 @@ import SingleProduct from "./client/pages/SingleProduct.jsx";
 import AdminLogin from "./admin/pages/AdminLogin.jsx";
 import Dashboard from "./admin/pages/Dashboard.jsx";
 import ProtectedAdminRoute from "./admin/component/ProtectedAdminRoute.jsx";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import useAuthStore from "./stores/authStore";
 import {Toaster} from "react-hot-toast";
 import Refund from "./client/component/Refund.jsx";
