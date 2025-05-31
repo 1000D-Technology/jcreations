@@ -3,14 +3,20 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { IoMdClose } from 'react-icons/io';
 import api from "../../utils/axios.js";
 import toast from 'react-hot-toast';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import SearchItem from "./utils/Searchitem.jsx";
 import { createPortal } from 'react-dom';
-import Category from "./Category.jsx";
 import Categoryitem from "./utils/Categoryitem.jsx";
 
-function SearchByCategory({ isOpen, onClose, initialCategory ,onCategoryClick}) {
+function SearchByCategory({ isOpen, onClose, initialCategory }) {
     const navigate = useNavigate();
+    const params = useParams();
+    const categoryFromURL = params.category;
+
+    // Determine if we're in standalone page mode or modal mode
+    const isStandalonePage = !!categoryFromURL;
+    const effectiveCategoryId = categoryFromURL || initialCategory;
+
     // Search state
     const [searchQuery, setSearchQuery] = useState('');
     const [recentSearches, setRecentSearches] = useState(() => {
@@ -47,23 +53,25 @@ function SearchByCategory({ isOpen, onClose, initialCategory ,onCategoryClick}) 
     const abortControllerRef = useRef(null);
     const hasInitialSearchRef = useRef(false);
 
-    // Updated useEffect to use forcedCategoryId
-    useEffect(() => {
-        if (isOpen && initialCategory) {
-            setCategoryId(initialCategory);
-            searchParamsRef.current.categoryId = initialCategory;
+    // Navigate to home page when back button is clicked
+    const handleBack = () => {
+        navigate('/');
+    };
 
-            // Pass initialCategory directly to searchProducts
+    // Initialize category search when component mounts or category changes
+    useEffect(() => {
+        if ((isOpen || isStandalonePage) && effectiveCategoryId) {
+            setCategoryId(effectiveCategoryId);
+            searchParamsRef.current.categoryId = effectiveCategoryId;
+
+            // Pass effectiveCategoryId directly to searchProducts
             setLoading(true);
-            searchProducts(false, initialCategory);
+            searchProducts(false, effectiveCategoryId);
 
             // Fetch category details
-            fetchCategoryDetails(initialCategory);
-        } else if (!isOpen) {
-            // Reset when modal closes
-            hasInitialSearchRef.current = false;
+            fetchCategoryDetails(effectiveCategoryId);
         }
-    }, [isOpen, initialCategory]);
+    }, [isOpen, effectiveCategoryId, isStandalonePage]);
 
     // Fetch category details
     const fetchCategoryDetails = async (id) => {
@@ -104,35 +112,9 @@ function SearchByCategory({ isOpen, onClose, initialCategory ,onCategoryClick}) 
         };
     }, []);
 
-    // Load categories for filter
-    useEffect(() => {
-        const fetchCategories = async () => {
-            try {
-                const response = await api.get('/categories');
-                if (response.data && Array.isArray(response.data)) {
-                    setCategories(response.data);
-
-                    // Set selected category details
-                    if (initialCategory) {
-                        const category = response.data.find(cat => cat.id.toString() === initialCategory.toString());
-                        if (category) {
-                            setSelectedCategory(category);
-                        }
-                    }
-                }
-            } catch (err) {
-                console.error("Error fetching categories:", err);
-            }
-        };
-
-        if (isOpen) {
-            fetchCategories();
-        }
-    }, [isOpen, initialCategory]);
-
-    // Updated searchProducts function with forcedCategoryId parameter
+    // Search products function
     const searchProducts = useCallback(async (isLoadingMore = false, forcedCategoryId = null) => {
-        if (!isOpen) return;
+        if (!isOpen && !isStandalonePage) return;
 
         // Cancel previous request
         if (abortControllerRef.current) {
@@ -170,13 +152,6 @@ function SearchByCategory({ isOpen, onClose, initialCategory ,onCategoryClick}) 
             };
 
             const endpoint = `/products/search/${searchLimit}`;
-
-            // Save recent search
-            if (searchQuery.trim() && !recentSearches.includes(searchQuery.trim())) {
-                const updatedSearches = [searchQuery.trim(), ...recentSearches.slice(0, 4)];
-                setRecentSearches(updatedSearches);
-                localStorage.setItem('jcreations_recent_searches', JSON.stringify(updatedSearches));
-            }
 
             // API request
             const response = await api.get(endpoint, {
@@ -219,7 +194,7 @@ function SearchByCategory({ isOpen, onClose, initialCategory ,onCategoryClick}) 
                 setLoadingMore(false);
             }
         }
-    }, [isOpen, searchQuery, categoryId, priceRange, status, searchLimit, recentSearches, formatProductData]);
+    }, [isOpen, isStandalonePage, searchQuery, categoryId, priceRange, status, searchLimit, formatProductData]);
 
     // Handle load more
     const handleLoadMore = useCallback(() => {
@@ -228,22 +203,136 @@ function SearchByCategory({ isOpen, onClose, initialCategory ,onCategoryClick}) 
 
     // Watch for searchLimit changes
     useEffect(() => {
-        if (!isOpen || loading) return;
+        if ((!isOpen && !isStandalonePage) || loading) return;
 
         if (searchLimit > 20 && !loadingMore) {
             searchProducts(true);
         }
-    }, [searchLimit, isOpen, loading, loadingMore, searchProducts]);
+    }, [searchLimit, isOpen, isStandalonePage, loading, loadingMore, searchProducts]);
 
-    // Handle recent search click
-    const handleRecentSearchClick = (search) => {
-        setSearchQuery(search);
-    };
+    // Render content for both modal and standalone page
+    const renderContent = () => (
+        <div className="max-w-7xl w-full flex flex-col">
+            {/* Fixed container for categories in standalone mode */}
+            {isStandalonePage && (
+                <div className="fixed left-0 right-0 z-40 bg-white py-3 md:hidden">
+                    <Categoryitem />
+                </div>
+            )}
+
+            {/* Header */}
+            <div className="flex justify-between items-center p-5 border-b sticky bg-white z-10 mt-20 md:mt-0">
+                {isStandalonePage && (
+                    <button onClick={handleBack} className="p-2">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M19 12H5" stroke="#333" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            <path d="M12 19L5 12L12 5" stroke="#333" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                    </button>
+                )}
+
+                <h2 className="text-xl font-medium">
+                    {selectedCategory ? selectedCategory.name : 'Browse Categories'}
+                </h2>
+
+                {!isStandalonePage && (
+                    <motion.button
+                        onClick={onClose}
+                        whileHover={{scale: 1.1}}
+                        whileTap={{scale: 0.95}}
+                        className="p-2 rounded-full hover:bg-gray-100"
+                    >
+                        <IoMdClose className="text-xl"/>
+                    </motion.button>
+                )}
+
+                {isStandalonePage && <div className="w-10"></div>} {/* Spacer for alignment */}
+            </div>
+
+            {/* Category description */}
+            <div className="p-5 sticky top-16 bg-white z-10">
+                {selectedCategory && selectedCategory.description && (
+                    <div className="mb-4 text-gray-600">
+                        {selectedCategory.description}
+                    </div>
+                )}
+            </div>
+
+            {/* Results section */}
+            <div className="flex-1 overflow-auto p-5 pb-24">
+                {/* Loading state */}
+                {loading && !loadingMore && (
+                    <div className="flex flex-col items-center justify-center py-10">
+                        <div className="w-12 h-12 border-4 border-[#F7A313] border-t-transparent rounded-full animate-spin"></div>
+                        <p className="mt-4 text-gray-600">Loading products...</p>
+                    </div>
+                )}
+
+                {/* Error state */}
+                {error && !loading && products.length === 0 && (
+                    <div className="text-center py-10">
+                        <p className="text-red-500">{error}</p>
+                        <button
+                            onClick={() => searchProducts(false)}
+                            className="mt-4 px-4 py-2 bg-gray-100 rounded-full text-gray-700 hover:bg-gray-200"
+                        >
+                            Try Again
+                        </button>
+                    </div>
+                )}
+
+                {/* Empty results */}
+                {!loading && !error && products.length === 0 && (
+                    <div className="text-center py-10">
+                        <p className="text-gray-600">No products found. Try adjusting your filters.</p>
+                    </div>
+                )}
+
+                {/* Products grid */}
+                {products.length > 0 && (
+                    <div>
+                        <h3 className="text-sm font-medium text-gray-500 mb-4">{products.length} Results Found</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {products.map((product, index) => (
+                                <SearchItem key={product.id || index} product={product} />
+                            ))}
+                        </div>
+
+                        {/* Load more button */}
+                        {loadingMore ? (
+                            <div className="flex justify-center mt-6">
+                                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-[#F7A313]"></div>
+                            </div>
+                        ) : hasMore && (
+                            <div className="flex justify-center mt-6">
+                                <motion.button
+                                    onClick={handleLoadMore}
+                                    whileHover={{ scale: 1.03 }}
+                                    whileTap={{ scale: 0.97 }}
+                                    className="px-4 py-2 bg-gray-100 rounded-full text-gray-700 hover:bg-gray-200"
+                                >
+                                    Load More
+                                </motion.button>
+                            </div>
+                        )}
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+
+    // Render differently based on whether this is a modal or standalone page
+    if (isStandalonePage) {
+        return (
+            <div className="fixed inset-0 bg-white z-50 flex justify-center overflow-auto">
+                {renderContent()}
+            </div>
+        );
+    }
 
     return createPortal(
         <AnimatePresence>
             {isOpen && (
-
                 <motion.div
                     className="fixed inset-0 bg-white z-50 flex justify-center overflow-auto"
                     initial={{ opacity: 0 }}
@@ -251,103 +340,7 @@ function SearchByCategory({ isOpen, onClose, initialCategory ,onCategoryClick}) 
                     exit={{ opacity: 0 }}
                     transition={{ duration: 0.2 }}
                 >
-
-                    <div className="max-w-7xl w-full flex flex-col">
-                        {/* Fixed container for categories positioned below header */}
-                        <div className="fixed left-0 right-0 z-40 bg-white py-3 md:hidden">
-                            <Categoryitem onCategoryClick={onCategoryClick}/>
-                        </div>
-                        {/* Header */}
-                        <div className="flex justify-between items-center p-5 border-b sticky  bg-white z-10 mt-20 md:mt-0">
-
-
-
-
-
-                            <h2 className="text-xl font-medium">
-                                {selectedCategory ? selectedCategory.name : 'Browse Categories'}
-                            </h2>
-                            <motion.button
-                                onClick={onClose}
-                                whileHover={{scale: 1.1}}
-                                whileTap={{scale: 0.95}}
-                                className="p-2 rounded-full hover:bg-gray-100"
-                            >
-                                <IoMdClose className="text-xl"/>
-                            </motion.button>
-                        </div>
-
-                        {/* Search and filters */}
-                        <div className="p-5 sticky top-16 bg-white z-10">
-                            {/* Category description */}
-                            {selectedCategory && selectedCategory.description && (
-                                <div className="mb-4 text-gray-600">
-                                    {selectedCategory.description}
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Results section */}
-                        <div className="flex-1 overflow-auto p-5 pb-24">
-                            {/* Loading state */}
-                            {loading && !loadingMore && (
-                                <div className="flex flex-col items-center justify-center py-10">
-                                    <div className="w-12 h-12 border-4 border-[#F7A313] border-t-transparent rounded-full animate-spin"></div>
-                                    <p className="mt-4 text-gray-600">Loading products...</p>
-                                </div>
-                            )}
-
-                            {/* Error state */}
-                            {error && !loading && products.length === 0 && (
-                                <div className="text-center py-10">
-                                    <p className="text-red-500">{error}</p>
-                                    <button
-                                        onClick={() => searchProducts(false)}
-                                        className="mt-4 px-4 py-2 bg-gray-100 rounded-full text-gray-700 hover:bg-gray-200"
-                                    >
-                                        Try Again
-                                    </button>
-                                </div>
-                            )}
-
-                            {/* Empty results */}
-                            {!loading && !error && products.length === 0 && (
-                                <div className="text-center py-10">
-                                    <p className="text-gray-600">No products found. Try adjusting your filters.</p>
-                                </div>
-                            )}
-
-                            {/* Products grid */}
-                            {products.length > 0 && (
-                                <div>
-                                    <h3 className="text-sm font-medium text-gray-500 mb-4">{products.length} Results Found</h3>
-                                    <div className="grid grid-cols-1 gap-4">
-                                        {products.map((product, index) => (
-                                            <SearchItem key={product.id || index} product={product} />
-                                        ))}
-                                    </div>
-
-                                    {/* Load more button */}
-                                    {loadingMore ? (
-                                        <div className="flex justify-center mt-6">
-                                            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-[#F7A313]"></div>
-                                        </div>
-                                    ) : hasMore && (
-                                        <div className="flex justify-center mt-6">
-                                            <motion.button
-                                                onClick={handleLoadMore}
-                                                whileHover={{ scale: 1.03 }}
-                                                whileTap={{ scale: 0.97 }}
-                                                className="px-4 py-2 bg-gray-100 rounded-full text-gray-700 hover:bg-gray-200"
-                                            >
-                                                Load More
-                                            </motion.button>
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-                        </div>
-                    </div>
+                    {renderContent()}
                 </motion.div>
             )}
         </AnimatePresence>,

@@ -1,16 +1,15 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from "../../../utils/axios.js";
-import SearchByCategory from '../SearchByCategory';
+import { useNavigate } from 'react-router-dom';
 
 function Categoryitem() {
     const [categories, setCategories] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [selectedCategory, setSelectedCategory] = useState(null);
-    const [showCategoryModal, setShowCategoryModal] = useState(false);
     const scrollRef = useRef(null);
     const DEFAULT_IMAGE = "/placeholder.png";
+    const navigate = useNavigate();
 
     // Fetch categories from API
     useEffect(() => {
@@ -31,21 +30,9 @@ function Categoryitem() {
         fetchCategories();
     }, []);
 
-    // Handle category click
+    // Handle category click - navigate to category route
     const handleCategoryClick = (categoryId) => {
-        // Reset selectedCategory to force re-render
-        setSelectedCategory(null);
-
-        // Delay setting the category to ensure re-render
-        setTimeout(() => {
-            setSelectedCategory(categoryId);
-            setShowCategoryModal(true);
-        }, 0);
-    };
-
-    // Handle modal close
-    const handleCloseModal = () => {
-        setShowCategoryModal(false);
+        navigate(`/category/${categoryId}`);
     };
 
     // Get image source with fallback
@@ -102,7 +89,7 @@ function Categoryitem() {
                 animate="visible"
                 variants={container}
             >
-                {/* Loading skeleton code */}
+                {/* Loading skeleton */}
                 <div className="hidden md:grid md:grid-cols-6 md:gap-4">
                     {[...Array(6)].map((_, index) => (
                         <motion.div
@@ -110,7 +97,8 @@ function Categoryitem() {
                             className="flex flex-col items-center"
                             variants={item}
                         >
-                            {/* Desktop skeleton */}
+                            <div className="rounded-full w-36 h-36 bg-gray-200 animate-pulse"></div>
+                            <div className="mt-2 h-4 w-20 bg-gray-200 animate-pulse"></div>
                         </motion.div>
                     ))}
                 </div>
@@ -121,7 +109,7 @@ function Categoryitem() {
                             className="flex-shrink-0"
                             variants={item}
                         >
-                            {/* Mobile skeleton */}
+                            <div className="px-10 py-3 rounded-full bg-gray-200 animate-pulse"></div>
                         </motion.div>
                     ))}
                 </div>
@@ -250,14 +238,6 @@ function Categoryitem() {
                     )}
                 </AnimatePresence>
             </motion.div>
-
-            {/* Category Products Modal */}
-            <SearchByCategory
-                key={selectedCategory}
-                isOpen={showCategoryModal}
-                onClose={handleCloseModal}
-                initialCategory={selectedCategory}
-            />
 
             {/* Custom CSS */}
             <style jsx>{`
