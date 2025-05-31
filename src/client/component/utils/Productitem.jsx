@@ -235,7 +235,7 @@ const Productitem = forwardRef(({ onLoadingChange }, ref) => {
               </div>
             </motion.div>
         ))}
-        {loading && <div className="col-span-2 text-center mt-4">Loading more products...</div>}
+        {loading && <div className="col-span-2 text-center mt-4 lg:block hidden">Loading more products...</div>}
       </>
   );
 });
