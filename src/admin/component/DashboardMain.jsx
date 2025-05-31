@@ -27,6 +27,7 @@ function DashboardMain() {
     const statusOptions = [
         { value: 'pending', label: 'Pending' },
         { value: 'in_progress', label: 'In Progress' },
+        { value: 'shipped', label: 'Shipped' },
         { value: 'delivered', label: 'Delivered' },
         { value: 'returned', label: 'Returned' }
     ];
@@ -35,6 +36,7 @@ function DashboardMain() {
     const statusClasses = {
         pending: 'bg-yellow-100 text-yellow-800',
         in_progress: 'bg-blue-100 text-blue-800',
+        shipped: 'bg-orange-100 text-orange-800',
         delivered: 'bg-green-100 text-green-800',
         returned: 'bg-red-100 text-red-800'
     };

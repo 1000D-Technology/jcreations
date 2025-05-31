@@ -28,6 +28,7 @@ const Orders = () => {
     const statusOptions = [
         { value: 'pending', label: 'Pending' },
         { value: 'in_progress', label: 'In Progress' },
+        { value: 'shipped', label: 'Shipped' },
         { value: 'delivered', label: 'Delivered' },
         { value: 'returned', label: 'Returned' }
     ];
@@ -36,6 +37,7 @@ const Orders = () => {
     const statusClasses = {
         pending: 'bg-yellow-100 text-yellow-800',
         in_progress: 'bg-blue-100 text-blue-800',
+        shipped: 'bg-orange-100 text-orange-800',
         delivered: 'bg-green-100 text-green-800',
         returned: 'bg-red-100 text-red-800'
     };
@@ -54,8 +56,8 @@ const Orders = () => {
             try {
                 response = await api.get('/orders');
                 console.log('Successfully fetched from /orders');
-            } catch (err) {
-                console.log('Failed to fetch from /orders, trying /admin/orders');
+            } catch (error) {
+                console.log('Failed to fetch from /orders, trying /admin/orders:', error.message);
                 response = await api.get('/admin/orders');
                 console.log('Successfully fetched from /admin/orders');
             }
@@ -366,7 +368,7 @@ const Orders = () => {
                                             <td className="px-4 py-3 font-medium">{order.id}</td>
                                             <td className="px-4 py-3">{order.customer_name || 'Guest'}</td>
                                             <td className="px-4 py-3">{formatDateTime(order.created_at)}</td>
-                                            <td className="px-4 py-3">${parseFloat(order.total_amount || 0).toFixed(2)}</td>
+                                            <td className="px-4 py-3">LKR. {parseFloat(order.total_amount || 0).toFixed(2)}</td>
                                             <td className="px-4 py-3">
                                                 {updatingStatus === order.id ? (
                                                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
@@ -382,11 +384,31 @@ const Orders = () => {
                                                         onClick={(e) => e.stopPropagation()}
                                                         className={`text-xs rounded-full px-2.5 py-1 font-medium border-0 focus:ring-0 cursor-pointer ${statusClasses[order.status] || 'bg-gray-100 text-gray-800'}`}
                                                     >
-                                                        {statusOptions.map(option => (
-                                                            <option key={option.value} value={option.value}>
-                                                                {option.label}
-                                                            </option>
-                                                        ))}
+                                                        {statusOptions.map(option => {
+                                                            // Define status workflow order
+                                                            const statusOrder = {
+                                                                'pending': 0,
+                                                                'in_progress': 1,
+                                                                'shipped': 2,
+                                                                'delivered': 3,
+                                                                'returned': 4
+                                                            };
+
+                                                            // Disable if option is before current status in workflow
+                                                            const currentStatusOrder = statusOrder[order.status || 'pending'];
+                                                            const optionStatusOrder = statusOrder[option.value];
+                                                            const shouldDisable = optionStatusOrder < currentStatusOrder;
+
+                                                            return (
+                                                                <option
+                                                                    key={option.value}
+                                                                    value={option.value}
+                                                                    disabled={shouldDisable}
+                                                                >
+                                                                    {option.label}
+                                                                </option>
+                                                            );
+                                                        })}
                                                     </select>
                                                 )}
                                             </td>
