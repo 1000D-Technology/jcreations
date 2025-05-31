@@ -114,8 +114,10 @@ function Category() {
         }
 
         try {
+
+            
             if (isEditing) {
-                await api.put(`/admin/categories/${currentCategory.id}`, formData, {
+              await api.post(`/admin/categories/${currentCategory.id}`, formData, {
                     headers: {
                         'Content-Type': 'multipart/form-data'
                     }
@@ -134,7 +136,7 @@ function Category() {
             resetForm();
             fetchCategories();
         } catch (error) {
-            console.error('Error details:', error.response?.data || error.message);
+            console.error('Error details:', error);
             toast.error(error.response?.data?.message || (isEditing ? 'Failed to update category' : 'Failed to add category'));
         } finally {
             setAddingCategory(false);
