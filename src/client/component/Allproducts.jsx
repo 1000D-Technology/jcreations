@@ -11,8 +11,6 @@ function Allproducts() {
         // Check immediately when component mounts
         const checkHasMore = () => {
             if (productItemRef.current) {
-                console.log("Ref current:", productItemRef.current);
-                console.log("Has more:", productItemRef.current.hasMore);
                 setHasMoreItems(productItemRef.current.hasMore);
             }
         };
@@ -26,20 +24,35 @@ function Allproducts() {
     // Use another effect to check when loading changes
     useEffect(() => {
         if (productItemRef.current) {
-            console.log("Loading changed, checking hasMore");
             setHasMoreItems(productItemRef.current.hasMore);
         }
     }, [isLoading]);
 
-    // Function to handle "See More" button click
+    // Function to handle "See More" button click with scroll position preservation
     const handleSeeMore = () => {
-        console.log("See More clicked");
-        if (productItemRef.current && productItemRef.current.loadMore) {
-            productItemRef.current.loadMore();
+        if (!isLoading && productItemRef.current && productItemRef.current.loadMore) {
+            // Save current scroll position
+            const scrollPosition = window.scrollY;
+
+            // Set loading state
+            setIsLoading(true);
+
+            // Load more items and preserve scroll position
+            const loadMorePromise = productItemRef.current.loadMore();
+
+            if (loadMorePromise && typeof loadMorePromise.then === 'function') {
+                loadMorePromise.finally(() => {
+                    // Use setTimeout to ensure DOM has updated
+                    setTimeout(() => {
+                        window.scrollTo({
+                            top: scrollPosition,
+                            behavior: 'auto' // Use auto to avoid smooth scrolling animation
+                        });
+                    }, 10);
+                });
+            }
         }
     };
-
-    console.log("Rendering Allproducts. isLoading:", isLoading, "hasMoreItems:", hasMoreItems);
 
     return (
         <>
@@ -59,17 +72,17 @@ function Allproducts() {
 
                         {/* See More Button */}
                         <div className="flex justify-center mt-6 mb-8">
-                            {/* Use regular button for 1-2 renders for testing */}
                             <motion.button
                                 onClick={handleSeeMore}
-                                className="px-6 py-2 bg-[#F7A313] text-white rounded-full font-medium cursor-pointer"
+                                className={`px-6 py-2 bg-[#F7A313] text-white rounded-full font-medium cursor-pointer ${isLoading ? 'opacity-70' : ''}`}
                                 whileHover={{
                                     scale: 1.05,
                                     backgroundColor: "#e69200"
                                 }}
                                 whileTap={{ scale: 0.95 }}
+                                disabled={isLoading}
                             >
-                                See More
+                                {isLoading ? 'Loading...' : 'See More'}
                             </motion.button>
 
                             {isLoading && (
