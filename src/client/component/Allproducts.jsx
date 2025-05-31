@@ -50,7 +50,7 @@ function Allproducts() {
                             All Products
                         </span>
 
-                        <div className={'grid lg:grid-cols-2 mt-4 gap-4'}>
+                        <div className={'grid grid-cols-1 lg:grid-cols-2 mt-4 gap-4'}>
                             <Productitem
                                 ref={productItemRef}
                                 onLoadingChange={setIsLoading}
