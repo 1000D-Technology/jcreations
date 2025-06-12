@@ -7,46 +7,40 @@ import Search from './Search';
 import axios from 'axios';
 // Import cart store
 import useCartStore from '../../stores/cartStore';
+import api from "../../utils/axios.js";
 
 function Header() {
     const [isSearchOpen, setIsSearchOpen] = useState(false);
     const [scrollPosition, setScrollPosition] = useState(0);
-    const [contactNumber, setContactNumber] = useState('070 568 7994');
+    const [contactNumber, setContactNumber] = useState('');
 
     // Get cart item count from store
     const { itemCount, fetchCart } = useCartStore();
 
-    // Fetch contact numbers
+
     const fetchContactNumbers = async () => {
         try {
-            // Use complete URL if needed (adjust according to your API)
-            const API_BASE_URL = process.env.REACT_APP_API_URL || '';
-            const response = await axios.get(`${API_BASE_URL}/mobile-numbers`, {
+            const response = await api.get('/mobile-numbers', {
                 headers: {
                     'Accept': 'application/json'
                 }
             });
 
-            console.log('Contact number response:', response.data);
-
+            // Check if response data exists and is an array
             if (response.data && Array.isArray(response.data) && response.data.length > 0) {
-                // Make sure we're getting a valid phone number string
+                // Get the first number from the array
                 const phoneNumber = response.data[0].number;
-                if (phoneNumber && typeof phoneNumber === 'string') {
-                    setContactNumber(phoneNumber);
-                    console.log('Set contact number to:', phoneNumber);
-                } else {
-                    console.warn('Invalid phone number format:', phoneNumber);
-                }
+
+
+                // Set contact number to state
+                setContactNumber(phoneNumber);
+                console.log('Contact number set to:', phoneNumber);
             } else {
-                console.warn('No phone numbers returned from API');
+                console.warn('No valid contact numbers found in the response');
             }
         } catch (error) {
             console.error('Error fetching contact numbers:', error);
-            if (error.response) {
-                console.error('Response status:', error.response.status);
-                console.error('Response data:', error.response.data);
-            }
+            // Keep default number in case of error
         }
     };
 
