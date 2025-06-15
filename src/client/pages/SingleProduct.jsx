@@ -171,12 +171,11 @@ function SingleProduct() {
                         <span className="font-semibold text-sm text-gray-500">Back to Home</span>
                     </div>
 
-                    <div className="bg-white rounded-2xl overflow-hidden mt-3 lg:flex">
-                        <div className="relative w-full lg:w-1/3">
+                    <div className="bg-white rounded-2xl overflow-hidden mt-3 lg:flex">                        <div className="relative w-full lg:w-1/3">
                             {/* Discount tag */}
-                            {product.discount_percentage > 0 && product.status === "in_stock" && (
+                            {Number(product.discount_percentage) > 0 && product.status === "in_stock" && (
                                 <div className="absolute top-0 left-0 bg-[#F7A313] text-white py-1 px-6 rounded-br-2xl text-sm w-1/3 text-center font-semibold z-10">
-                                    {product.discount_percentage}% OFF
+                                    {Number(product.discount_percentage)}% OFF
                                 </div>
                             )}
 
@@ -285,21 +284,19 @@ function SingleProduct() {
                                         Out of Stock
                                     </span>
                                 )}
-                            </div>
-
-                            {/* Price display */}
+                            </div>                            {/* Price display */}
                             <h3 className="font-semibold text-gray-600 mb-2 flex items-center gap-2">
-                                {product.discount_percentage > 0 ? (
+                                {Number(product.discount_percentage) > 0 ? (
                                     <>
                                         <span className="text-[#F7A313]">
-                                            LKR.{(product.price * (1 - product.discount_percentage / 100)).toFixed(2)}
+                                            LKR.{(Number(product.price) * (1 - Number(product.discount_percentage) / 100)).toFixed(2)}
                                         </span>
                                         <span className="text-gray-400 text-sm line-through">
-                                            LKR.{product.price.toFixed(2)}
+                                            LKR.{Number(product.price).toFixed(2)}
                                         </span>
                                     </>
                                 ) : (
-                                    <span>LKR.{product.price.toFixed(2)}</span>
+                                    <span>LKR.{Number(product.price).toFixed(2)}</span>
                                 )}
                             </h3>
 

@@ -21,7 +21,13 @@ function Setting() {
     const [fetchingContact, setFetchingContact] = useState(false);
 
     // Date and time state
-    const [currentDateTime, setCurrentDateTime] = useState(new Date());
+    const [currentDateTime, setCurrentDateTime] = useState(new Date());    // COD limit state
+    const [codLimit, setCodLimit] = useState({
+        limit_amount: 0
+    });
+    const [codLimitData, setCodLimitData] = useState(null);
+    const [updatingCodLimit, setUpdatingCodLimit] = useState(false);
+    const [fetchingCodLimit, setFetchingCodLimit] = useState(false);
 
     // Update time every minute
     useEffect(() => {
@@ -77,6 +83,82 @@ function Setting() {
         } finally {
             setFetchingContact(false);
         }
+    };    // Fetch COD limit data
+    const fetchCodLimit = async () => {
+        setFetchingCodLimit(true);
+        try {
+            const response = await api.get('/cod-limit');
+            setCodLimitData(response.data.data);
+            setCodLimit({
+                limit_amount: response.data.data.limit_amount || 0
+            });
+        } catch (err) {
+            console.error('Error fetching COD limit:', err);
+            toast.error('Failed to load COD limit');
+        } finally {
+            setFetchingCodLimit(false);
+        }
+    };    // Update COD limit
+    const updateCodLimit = async () => {
+        // Validate input
+        if (codLimit.limit_amount < 0) {
+            toast.error('Please enter a valid limit amount');
+            return;
+        }
+
+        setUpdatingCodLimit(true);
+        try {
+            const payload = {
+                limit_amount: parseFloat(codLimit.limit_amount),
+                is_active: true
+            };
+
+            console.log('Updating COD limit:', payload);
+
+            const response = await api.put(
+                '/admin/cod-limit',
+                payload,
+                {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    }
+                }
+            );
+
+            console.log('API response:', response.data);
+            toast.success(response.data?.message || 'COD limit updated successfully');
+            await fetchCodLimit();
+        } catch (err) {
+            console.error('Error updating COD limit:', err);
+
+            if (err.response) {
+                console.error('Status:', err.response.status);
+                console.error('Response data:', err.response.data);
+                toast.error(err.response.data?.message || 'Failed to update COD limit');
+            } else if (err.request) {
+                toast.error('Server did not respond. Please check your connection.');
+            } else {
+                toast.error(`Error: ${err.message}`);
+            }
+        } finally {
+            setUpdatingCodLimit(false);
+        }
+    };    // Cancel COD limit update
+    const cancelCodLimitUpdate = () => {
+        setCodLimit({
+            limit_amount: codLimitData?.limit_amount || 0
+        });
+        toast.info('Changes discarded');
+    };
+
+    // Handle COD limit input changes
+    const handleCodLimitChange = (e) => {
+        const { name, value } = e.target;
+        setCodLimit({
+            ...codLimit,
+            [name]: name === 'limit_amount' ? parseFloat(value) || 0 : value
+        });
     };
 
     // Load contact number on component mount
@@ -85,6 +167,10 @@ function Setting() {
         fetchMobileNumber();
     }, []);
 
+    // Load COD limit on component mount
+    useEffect(() => {
+        fetchCodLimit();
+    }, []);
 
     const saveContactNumber = async () => {
         // Validate input
@@ -318,6 +404,46 @@ function Setting() {
                         </div>
                     </div>
 
+                </div>                <div className={'flex flex-col p-6 border-b border-gray-200'}>
+                    <span className={'font-semibold pb-2 text-lg'}>COD Limit Update</span>
+                    <div className={'gap-4 flex flex-col md:flex-row'}>
+                        <div className="w-full md:w-1/2 flex gap-2">
+                            <input
+                                type="number"
+                                name="limit_amount"
+                                value={codLimit.limit_amount}
+                                onChange={handleCodLimitChange}
+                                step="0.01"
+                                min="0"
+                                className="flex-grow px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                placeholder="Enter COD limit amount"
+                            />
+                        </div>
+                        <div className="flex gap-2">
+                            <button
+                                onClick={updateCodLimit}
+                                disabled={updatingCodLimit}
+                                className={'bg-green-300 px-3 py-2 rounded-md font-semibold cursor-pointer hover:bg-green-400'}>
+                                {updatingCodLimit ? 'Saving...' : 'Save'}
+                            </button>
+                            <button
+                                onClick={cancelCodLimitUpdate}
+                                className={'bg-gray-300 px-3 py-2 rounded-md font-semibold cursor-pointer hover:bg-gray-400'}>
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                    {fetchingCodLimit && (
+                        <div className="mt-2 text-sm text-gray-500">
+                            Loading COD limit...
+                        </div>
+                    )}
+                    {codLimitData && (
+                        <div className="mt-2 text-sm text-gray-600">
+                            Current limit: Rs. {parseFloat(codLimitData.limit_amount || 0).toFixed(2)}
+                            {codLimitData.is_active ? ' (Active)' : ' (Inactive)'}
+                        </div>
+                    )}
                 </div>
 
                 <div className="px-6 border-b border-gray-200">

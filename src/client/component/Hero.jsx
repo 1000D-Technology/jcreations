@@ -5,27 +5,27 @@ import { FaArrowRightLong } from "react-icons/fa6";
 import api from '../../utils/axios.js';
 
 function Hero() {
-    const [banner, setBanner] = useState(null);
+    const [banners, setBanners] = useState({ mobile: null, desktop: null });
     const [loading, setLoading] = useState(true);
 
     const storageUrl = import.meta.env.VITE_STORAGE_URL;
 
-    // Fetch banner on component mount
+    // Fetch banners on component mount
     useEffect(() => {
-        const fetchBanner = async () => {
+        const fetchBanners = async () => {
             try {
                 const response = await api.get('/banner');
                 if (response.status === 200 && response.data) {
-                    setBanner(response.data);
+                    setBanners(response.data);
                 }
             } catch (err) {
-                console.error('Error fetching banner:', err);
+                console.error('Error fetching banners:', err);
             } finally {
                 setLoading(false);
             }
         };
 
-        fetchBanner();
+        fetchBanners();
     }, []);
 
 // Function to scroll to products section with improved reliability
@@ -153,25 +153,53 @@ function Hero() {
                                 </button>
                             </motion.div>
                         </motion.div>
-                    </div>
-
-                    <motion.div
+                    </div>                    <motion.div
                         className={'w-1/2'}
                         variants={item}
                         whileHover={{scale: 1.02}}
                         transition={{duration: 0.3}}
                     >
-                        <motion.img
-                            src="/hero/herolg.webp"
-                            alt="hero"
-                            className={'w-full'}
-                            initial={{opacity: 0, scale: 0.95}}
-                            animate={{opacity: 1, scale: 1}}
-                            transition={{duration: 0.7}}
-                        />
+                        {loading ? (
+                            <div className="w-full h-80 bg-gray-200 animate-pulse rounded-lg flex items-center justify-center">
+                                <span className="text-gray-400">Loading banner...</span>
+                            </div>
+                        ) : banners.desktop ? (
+                            <div className="relative">
+                                <motion.img
+                                    src={`${storageUrl}/${banners.desktop.image_path}`}
+                                    alt={banners.desktop.title || "Desktop Banner"}
+                                    className={'w-full '}
+                                    initial={{opacity: 0, scale: 0.95}}
+                                    animate={{opacity: 1, scale: 1}}
+                                    transition={{duration: 0.7}}
+                                    onError={(e) => {
+                                        e.target.onerror = null;
+                                        e.target.src = "/hero/herolg.webp";
+                                        console.error("Failed to load desktop banner image");
+                                    }}
+                                />
+                                
+                                {banners.desktop.link && (
+                                    <Link
+                                        to={banners.desktop.link}
+                                        className="absolute top-4 right-4 bg-[#F7A313] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#e69200] transition-colors"
+                                    >
+                                        Learn More
+                                    </Link>
+                                )}
+                            </div>
+                        ) : (
+                            <motion.img
+                                src="/hero/herolg.webp"
+                                alt="hero"
+                                className={'w-full'}
+                                initial={{opacity: 0, scale: 0.95}}
+                                animate={{opacity: 1, scale: 1}}
+                                transition={{duration: 0.7}}
+                            />
+                        )}
                     </motion.div>
-                </motion.div>
-                <div className={'px-2 lg:hidden md:hidden w-full -mt-8'}>
+                </motion.div>                <div className={'px-2 lg:hidden md:hidden w-full -mt-8'}>
                     <div className="w-full rounded-3xl shadow-lg overflow-hidden">
                         <div className="relative">
                             {loading ? (
@@ -179,37 +207,57 @@ function Hero() {
                                 <div className="w-full h-[250px] bg-gray-200 animate-pulse rounded-3xl flex items-center justify-center">
                                     <span className="text-gray-400">Loading banner...</span>
                                 </div>
+                            ) : banners.mobile ? (
+                                <div className="relative">
+                                    <img
+                                        src={`${storageUrl}/${banners.mobile.image_path}`}
+                                        alt={banners.mobile.title || "Mobile Banner"}
+                                        className="w-full h-[250px] object-cover rounded-3xl"
+                                        onError={(e) => {
+                                            e.target.onerror = null;
+                                            e.target.src = "/hero/home back.webp";
+                                            console.error("Failed to load mobile banner image");
+                                        }}
+                                    />
+                                    {banners.mobile.title && (
+                                        <div className="absolute bottom-16 left-4 text-white">
+                                            <h3 className="font-bold text-xl leading-tight">{banners.mobile.title}</h3>
+                                            {banners.mobile.subtitle && (
+                                                <p className="text-sm text-gray-200 mt-1">{banners.mobile.subtitle}</p>
+                                            )}
+                                        </div>
+                                    )}
+                                    {banners.mobile.link ? (
+                                        <Link
+                                            to={banners.mobile.link}
+                                            className="absolute bottom-4 right-4 bg-[#F7A313] p-2 px-4 rounded-tl-3xl text-sm rounded-br-3xl text-white flex items-center gap-2 cursor-pointer hover:bg-[#e69200] transition-colors"
+                                        >
+                                            Learn More <FaArrowRightLong/>
+                                        </Link>
+                                    ) : (
+                                        <button
+                                            onClick={scrollToProducts}
+                                            className="absolute bottom-4 right-4 bg-[#F7A313] p-2 px-4 rounded-tl-3xl text-sm rounded-br-3xl text-white flex items-center gap-2 cursor-pointer hover:bg-[#e69200] transition-colors"
+                                        >
+                                            Order Now <FaArrowRightLong/>
+                                        </button>
+                                    )}
+                                </div>
                             ) : (
-                                <img
-                                    src={banner?.image_path ? `${storageUrl}/${banner.image_path}` : "/hero/home back.webp"}
-                                    alt="Banner"
-                                    className="w-full h-[250px] object-cover rounded-3xl"
-                                    onError={(e) => {
-                                        e.target.onerror = null;
-                                        e.target.src = "/hero/home back.webp";
-                                        console.error("Failed to load banner image");
-                                    }}
-                                />
+                                <div className="relative">
+                                    <img
+                                        src="/hero/home back.webp"
+                                        alt="Default Banner"
+                                        className="w-full h-[250px] object-cover rounded-3xl"
+                                    />
+                                    <button
+                                        onClick={scrollToProducts}
+                                        className="absolute bottom-4 right-4 bg-[#F7A313] p-2 px-4 rounded-tl-3xl text-sm rounded-br-3xl text-white flex items-center gap-2 cursor-pointer hover:bg-[#e69200] transition-colors"
+                                    >
+                                        Order Now <FaArrowRightLong/>
+                                    </button>
+                                </div>
                             )}
-                            {/*<div*/}
-                            {/*    className="absolute top-8 right-8 bg-white p-2 rounded-lg shadow-md text-sm font-semibold text-gray-700">*/}
-                            {/*    <div*/}
-                            {/*        className="absolute -top-3 -right-3 stamp text-white text-xs p-4 rounded-full font-bold">*/}
-                            {/*        %*/}
-                            {/*    </div>*/}
-                            {/*    <span className="text-2xl font-bold text-[#F7A313]">10%</span>*/}
-                            {/*    <p className="text-sm font-medium">Discount <br/></p>*/}
-                            {/*</div>*/}
-                            {/*<div*/}
-                            {/*    className="absolute bottom-4 left-4 p-2 rounded-lg shadow-md text-sm font-semibold text-gray-700">*/}
-                            {/*    <span className={'font-bold leading-tight text-white mt-6 0 text-2xl'}>Be The <span*/}
-                            {/*        className={'text-[#F7A313]'}>First</span><br/> Delivery &<br/> Easy Pick Up</span>*/}
-                            {/*</div>*/}
-                            <button
-                                onClick={scrollToProducts}
-                                className="absolute bottom-4 right-4 bg-[#F7A313] p-2 px-4 rounded-tl-3xl text-sm rounded-br-3xl text-white flex items-center gap-2 cursor-pointer">
-                                Order Now <FaArrowRightLong/>
-                            </button>
                         </div>
                     </div>
                 </div>

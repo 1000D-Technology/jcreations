@@ -32,6 +32,9 @@ function Products() {
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 20;
 
+    // Daily deals update state
+    const [updatingDailyDeals, setUpdatingDailyDeals] = useState(null);
+
     // Check admin authentication
     useEffect(() => {
         if (!user || !user.roles || !user.roles.includes('admin')) {
@@ -221,6 +224,45 @@ function Products() {
             }
         } finally {
             setUpdatingStatus(null);
+        }
+    };    const updateDailyDealsStatus = async (productId, isActive) => {
+        setUpdatingDailyDeals(productId);
+        try {
+            const token = user?.token;
+            const status = isActive ? 'active' : 'deactive';
+
+            const response = await api.put(`/admin/products/${productId}`, 
+                { daily_deals: status },
+                {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                }
+            );
+
+            if (response.status === 200) {
+                console.log('Daily deals status update response:', response.data);
+                toast.success(`Product ${isActive ? 'added to' : 'removed from'} daily deals`);
+
+                // Update the local state with the new daily deals status
+                setProducts(prevProducts =>
+                    prevProducts.map(product =>
+                        product.id === productId ? {...product, daily_deals: status} : product
+                    )
+                );
+            }
+        } catch (error) {
+            console.error('Error updating daily deals status:', error);
+            const errorMessage = error.response?.data?.message || error.message;
+            toast.error(`Failed to update daily deals: ${errorMessage}`);
+
+            if (error.response) {
+                console.log('Error response:', error.response.data);
+                console.log('Status code:', error.response.status);
+            }
+        } finally {
+            setUpdatingDailyDeals(null);
         }
     };
 
@@ -474,29 +516,28 @@ function Products() {
                                 <>
                                     <div className="overflow-x-auto border border-gray-200 rounded-lg shadow-sm">
                                         <div className="max-h-[400px] overflow-y-auto">
-                                            <table className="min-w-full divide-y divide-gray-200 table-fixed">
-                                                <thead className="bg-white sticky top-0 z-10 shadow-sm">
+                                            <table className="min-w-full divide-y divide-gray-200 table-fixed">                                                <thead className="bg-white sticky top-0 z-10 shadow-sm">
                                                 <tr>
                                                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider w-[5%]">ID</th>
-                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider w-[20%]">Product Name</th>
-                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider w-[15%]">Category</th>
-                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider w-[10%]">Price</th>
-                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider w-[10%]">Discount</th>
-                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider w-[10%]">Image</th>
-                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider w-[10%]">More</th>
-                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider w-[10%]">Update</th>
-                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider w-[10%]">Status</th>
+                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider w-[18%]">Product Name</th>
+                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider w-[12%]">Category</th>
+                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider w-[8%]">Price</th>
+                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider w-[8%]">Discount</th>
+                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider w-[8%]">Image</th>
+                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider w-[8%]">More</th>
+                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider w-[8%]">Update</th>
+                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider w-[12%]">Daily Deals</th>
+                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider w-[13%]">Status</th>
                                                 </tr>
                                                 </thead>
-                                                <tbody className="bg-white divide-y divide-gray-200">
-                                                {currentItems.map((product) => (
+                                                <tbody className="bg-white divide-y divide-gray-200">                                                {currentItems.map((product) => (
                                                     <tr key={product.id} className="hover:bg-gray-50">
                                                         <td className="px-4 py-3 whitespace-nowrap w-[5%]">{product.id}</td>
-                                                        <td className="px-4 py-3 whitespace-nowrap w-[20%]">{product.name}</td>
-                                                        <td className="px-4 py-3 whitespace-nowrap w-[15%]">{product.category?.name || product.category_id}</td>
-                                                        <td className="px-4 py-3 whitespace-nowrap w-[10%]">Rs.{parseFloat(product.price).toFixed(2)}</td>
-                                                        <td className="px-4 py-3 whitespace-nowrap w-[10%]">{product.discount_percentage || 0}%</td>
-                                                        <td className="px-4 py-3 whitespace-nowrap w-[10%]">
+                                                        <td className="px-4 py-3 whitespace-nowrap w-[18%]">{product.name}</td>
+                                                        <td className="px-4 py-3 whitespace-nowrap w-[12%]">{product.category?.name || product.category_id}</td>
+                                                        <td className="px-4 py-3 whitespace-nowrap w-[8%]">Rs.{parseFloat(product.price).toFixed(2)}</td>
+                                                        <td className="px-4 py-3 whitespace-nowrap w-[8%]">{product.discount_percentage || 0}%</td>
+                                                        <td className="px-4 py-3 whitespace-nowrap w-[8%]">
                                                             <img
                                                                 src={
                                                                     product.images
@@ -516,7 +557,7 @@ function Products() {
                                                                 }}
                                                             />
                                                         </td>
-                                                        <td className="px-4 py-3 whitespace-nowrap w-[10%]">
+                                                        <td className="px-4 py-3 whitespace-nowrap w-[8%]">
                                                             <button
                                                                 onClick={() => handlePreviewClick(product)}
                                                                 className="w-full h-full flex justify-center items-center cursor-pointer"
@@ -526,7 +567,7 @@ function Products() {
                                                                     className="text-blue-400 text-lg hover:text-blue-600"/>
                                                             </button>
                                                         </td>
-                                                        <td className="px-4 py-3 whitespace-nowrap w-[10%]">
+                                                        <td className="px-4 py-3 whitespace-nowrap w-[8%]">
                                                             <button
                                                                 onClick={() => handleUpdateProductClick(product)}
                                                                 className="w-full h-full flex justify-center items-center cursor-pointer"
@@ -535,7 +576,26 @@ function Products() {
                                                                 <AiOutlineReload className="text-yellow-500 text-lg hover:text-yellow-600"/>
                                                             </button>
                                                         </td>
-                                                        <td className="px-4 py-3 whitespace-nowrap w-[10%]">
+                                                        <td className="px-4 py-3 whitespace-nowrap w-[12%]">
+                                                            <div className="flex justify-center items-center">
+                                                                {updatingDailyDeals === product.id ? (
+                                                                    <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-blue-500"></div>
+                                                                ) : (
+                                                                    <label className="flex items-center cursor-pointer">
+                                                                        <input
+                                                                            type="checkbox"
+                                                                            checked={product.daily_deals === 'active'}
+                                                                            onChange={(e) => updateDailyDealsStatus(product.id, e.target.checked)}
+                                                                            className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
+                                                                        />
+                                                                        <span className="ml-2 text-sm text-gray-700">
+                                                                            {product.daily_deals === 'active' ? 'Active' : 'Inactive'}
+                                                                        </span>
+                                                                    </label>
+                                                                )}
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-4 py-3 whitespace-nowrap w-[13%]">
                                                             {updatingStatus === product.id ? (
                                                                 <div className="w-full flex justify-center">
                                                                     <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-amber-500"></div>

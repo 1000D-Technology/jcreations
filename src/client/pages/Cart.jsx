@@ -1,9 +1,7 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import api from '../../utils/axios.js';
 import toast from 'react-hot-toast';
 import useCartStore from '../../stores/cartStore'; // Import the cart store
-import BottomNavigator from "../component/BottomNavigator.jsx";
-import Header from "../component/Header.jsx";
 import CartNavigator from '../component/utils/CartNavigator.jsx';
 import CartItemDemo from '../component/utils/CartItemDemo.jsx';
 import OrderSummary from '../component/utils/OrderSummery.jsx';
@@ -49,6 +47,10 @@ function Cart() {
 
     // Add this in the Cart component where other state variables are defined
     const [shipping, setShipping] = useState(300); // Default shipping cost
+
+    // COD limit state
+    const [codLimit, setCodLimit] = useState(2000);
+    const [fetchingCodLimit, setFetchingCodLimit] = useState(true);
 
     // Check if cart is empty
     const isEmpty = cartItems.length === 0;
@@ -154,6 +156,53 @@ function Cart() {
         console.log(`Shipping charge updated to: ${charge}`);
     };
 
+    // Fetch COD limit
+    const fetchCodLimit = async () => {
+        try {
+            const response = await api.get('/cod-limit');
+            setCodLimit(response.data.data.limit_amount || 2000);
+        } catch (err) {
+            console.error('Error fetching COD limit:', err);
+            // Fallback to default limit if API fails
+            setCodLimit(2000);
+        } finally {
+            setFetchingCodLimit(false);
+        }
+    };
+
+    const handleWishUpdate = async (id, wishText) => {
+        try {
+            const cartId = localStorage.getItem('jcreations_cart_id');
+            if (cartId) {
+                // Find the cart item to get product_id and current quantity
+                const cartItem = cartItems.find(item => item.id === id);
+                if (!cartItem) {
+                    toast.error("Cart item not found");
+                    return;
+                }
+
+                await api.post(`/cart/items`, {
+                    product_id: cartItem.product_id,
+                    quantity: cartItem.quantity,
+                    wish: wishText,
+                    cart_id: parseInt(cartId)
+                });
+
+                // Update local state after successful API call
+                setCartItems(
+                    cartItems.map((cartItem) =>
+                        cartItem.id === id ? { ...cartItem, wish: wishText } : cartItem
+                    )
+                );
+            } else {
+                toast.error("Cart information not found");
+            }
+        } catch (error) {
+            console.error("Error updating wish text:", error);
+            toast.error("Failed to update wish text");
+        }
+    };
+
     // Calculate order summary values using the pre-calculated effective price
     const subtotal = cartItems.reduce((total, item) => {
         return total + (item.effectivePrice * item.quantity);
@@ -175,6 +224,11 @@ function Cart() {
                 document.body.removeChild(script);
             }
         };
+    }, []);
+
+    // Fetch COD limit on component mount
+    useEffect(() => {
+        fetchCodLimit();
     }, []);
 
     // Update the handleCheckout function to skip login dialog if user is logged in
@@ -412,22 +466,29 @@ function Cart() {
                     if (response.data && response.data.items && response.data.items.length > 0) {
                         // Transform API response to match our component's format
                         const transformedItems = response.data.items.map(item => {
+                            // Ensure prices are numbers
+                            const price = parseFloat(item.product.price) || 0;
+                            const discountPercentage = parseFloat(item.product.discount_percentage) || 0;
+                            
                             // Calculate effective price with discount applied
-                            const effectivePrice = item.product.discount_percentage > 0
-                                ? item.product.price * (1 - item.product.discount_percentage / 100)
-                                : item.product.price;
+                            const effectivePrice = discountPercentage > 0
+                                ? price * (1 - discountPercentage / 100)
+                                : price;
 
                             return {
                                 id: item.id,
                                 name: item.product.name,
-                                price: item.product.price,
+                                price: price,
                                 effectivePrice: effectivePrice, // Store calculated price
                                 quantity: item.quantity,
                                 image: item.product.images && item.product.images.length > 0
                                     ? `${import.meta.env.VITE_STORAGE_URL}/${item.product.images[0]}`
                                     : "/category/cake.svg", // Default image if none available
                                 product_id: item.product_id,
-                                discount_percentage: item.product.discount_percentage || 0
+                                discount_percentage: discountPercentage,
+                                category_id: item.product.category_id,
+                                character_count: item.product.character_count || 0,
+                                wish: item.wish || ""
                             };
                         });
 
@@ -458,12 +519,12 @@ function Cart() {
                 {currentStep === 1 && (
                     // Original layout for cart view
                     <div className="max-w-7xl mx-auto flex flex-col md:flex-row gap-4 md:gap-6 px-4 py-6 pt-28 lg:mt-10 md:p-5">
-                        <div className="w-full md:w-3/5 transition-all duration-300 ease-in-out ">
-                            <CartItemDemo
+                        <div className="w-full md:w-3/5 transition-all duration-300 ease-in-out ">                            <CartItemDemo
                                 cartItems={cartItems}
                                 onRemove={handleRemove}
                                 onIncreaseQuantity={handleIncreaseQuantity}
                                 onDecreaseQuantity={handleDecreaseQuantity}
+                                onWishUpdate={handleWishUpdate}
                                 removingItems={removingItems} // Pass the removing items array
                             />
                         </div>
@@ -500,13 +561,13 @@ function Cart() {
                                     deliveryInfo={deliveryInfo}
                                     setDeliveryInfo={setDeliveryInfo}
                                     onShippingChange={handleShippingChange}
-                                />
-                                <PaymentMethodSelector
+                                />                                <PaymentMethodSelector
                                     total={total}
                                     selectedMethod={selectedPaymentMethod}
                                     onSelectPaymentMethod={setSelectedPaymentMethod}
+                                    codLimit={codLimit}
                                 />
-                                <Additionalnotes />
+                                <Additionalnotes codLimit={codLimit} />
                             </div>
                             <div className="w-full md:w-2/5 mt-4 md:mt-0">
                                 <OrderSummary
