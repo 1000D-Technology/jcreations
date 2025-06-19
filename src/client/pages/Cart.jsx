@@ -168,9 +168,7 @@ function Cart() {
         } finally {
             setFetchingCodLimit(false);
         }
-    };
-
-    const handleWishUpdate = async (id, wishText) => {
+    };    const handleWishUpdate = async (id, wishText) => {
         try {
             const cartId = localStorage.getItem('jcreations_cart_id');
             if (cartId) {
@@ -181,9 +179,8 @@ function Cart() {
                     return;
                 }
 
-                await api.post(`/cart/items`, {
-                    product_id: cartItem.product_id,
-                    quantity: cartItem.quantity,
+                // Use PUT instead of POST to update the wish message without changing the quantity
+                await api.put(`/cart/items/${id}`, {
                     wish: wishText,
                     cart_id: parseInt(cartId)
                 });
