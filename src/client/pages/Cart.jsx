@@ -206,6 +206,16 @@ function Cart() {
     }, 0);
 
     const total = subtotal + shipping;
+    
+    // Debug values for order summary
+    useEffect(() => {
+        console.log("Order Summary values:");
+        console.log("- Cart items:", cartItems.length);
+        console.log("- Subtotal:", subtotal);
+        console.log("- Shipping:", shipping);
+        console.log("- Total:", total);
+        console.log("- Is cart empty?", isEmpty);
+    }, [cartItems, subtotal, shipping, total, isEmpty]);
 
     // Add this useEffect to load Payhere SDK
     useEffect(() => {
@@ -230,21 +240,30 @@ function Cart() {
 
     // Update the handleCheckout function to skip login dialog if user is logged in
     const handleCheckout = async () => {
+        console.log("Checkout button clicked, currentStep:", currentStep);
+        console.log("Cart empty?", isEmpty);
+
         // Don't proceed if cart is empty
         if (isEmpty) {
+            console.log("Cannot proceed with empty cart");
             return;
         }
 
         if (currentStep === 1) {
+            console.log("Processing step 1 checkout");
             // Check if user is logged in - directly check localStorage
             const userId = localStorage.getItem('jcreations_user_uid');
+            console.log("User ID from localStorage:", userId);
+            
             if (!userId) {
                 // Only show login popup if no user ID exists
+                console.log("User not logged in, showing login popup");
                 setShowLoginPopup(true);
                 return;
             }
 
             // Move from cart to checkout immediately if user is logged in
+            console.log("User is logged in, proceeding to checkout");
             setCurrentStep(2);
             console.log("Proceeding to checkout with items:", cartItems);
         } else if (currentStep === 2) {
@@ -455,12 +474,17 @@ function Cart() {
     useEffect(() => {
         const fetchCartData = async () => {
             try {
+                console.log("Fetching cart data...");
                 const cartId = localStorage.getItem('jcreations_cart_id');
+                console.log("Cart ID from localStorage:", cartId);
+                
                 if (cartId) {
                     const response = await api.get(`/cart/${cartId}`);
                     console.log("Raw cart data:", response.data);
 
                     if (response.data && response.data.items && response.data.items.length > 0) {
+                        console.log("Cart has items:", response.data.items.length);
+                        
                         // Transform API response to match our component's format
                         const transformedItems = response.data.items.map(item => {
                             // Ensure prices are numbers
@@ -566,14 +590,14 @@ function Cart() {
                                 />
                                 <Additionalnotes codLimit={codLimit} />
                             </div>
-                            <div className="w-full md:w-2/5 mt-4 md:mt-0">
-                                <OrderSummary
+                            <div className="w-full md:w-2/5 mt-4 md:mt-0">                                <OrderSummary
                                     subtotal={subtotal}
                                     shipping={shipping}
                                     total={total}
                                     onCheckout={handleCheckout}
                                     isCheckout={true}
                                     isEmpty={isEmpty}
+                                    locationSelected={!!deliveryInfo.city}
                                 />
                             </div>
                         </div>
