@@ -75,7 +75,7 @@ function Header() {
     return (
         <>
             <header
-                className={`flex justify-center w-full px-4 z-50 py-3 bg-white/95 backdrop-blur-sm shadow-lg transition-all duration-300 ${
+                className={`flex justify-center w-full px-0 z-50 py-3 bg-white/95 backdrop-blur-sm shadow-lg transition-all duration-300 ${
                     scrollPosition > 50 ? 'rounded-b-xl' : ''
                 }`}
             >

@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import Hero from "../component/Hero.jsx";
 import Newarrivals from "../component/Newarrivals.jsx";
-import DailyDeals from "../component/DailyDeals.jsx";
 import Category from "../component/Category.jsx";
 import Allproducts from '../component/Allproducts.jsx';
 import Search from "../component/Search.jsx";
@@ -20,12 +19,11 @@ function Home() {
     };
 
     return (
-        <div>            <main>
+        <div>
+            <main>
                 <Hero />
                 <Category onCategoryClick={handleCategoryClick} />
-                <DailyDeals />
                 <Newarrivals />
-                
                 <Allproducts />
 
                 {/* Search component with initialCategory */}
