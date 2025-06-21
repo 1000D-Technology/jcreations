@@ -10,28 +10,33 @@ const Banners = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [currentDateTime, setCurrentDateTime] = useState(new Date());
-  const [currentBanner, setCurrentBanner] = useState(null);
+  const [currentBanners, setCurrentBanners] = useState({ mobile: null, desktop: null });
   const [fetchLoading, setFetchLoading] = useState(true);
+  const [bannerForm, setBannerForm] = useState({
+    type: 'mobile',
+    title: '',
+    subtitle: '',
+    link: ''
+  });
 
   const storageUrl = import.meta.env.VITE_STORAGE_URL;
-
-  // Fetch current banner
+  // Fetch current banners
   useEffect(() => {
-    const fetchCurrentBanner = async () => {
+    const fetchCurrentBanners = async () => {
       setFetchLoading(true);
       try {
         const response = await api.get('/banner');
         if (response.status === 200 && response.data) {
-          setCurrentBanner(response.data);
+          setCurrentBanners(response.data);
         }
       } catch (err) {
-        console.error('Error fetching banner:', err);
+        console.error('Error fetching banners:', err);
       } finally {
         setFetchLoading(false);
       }
     };
 
-    fetchCurrentBanner();
+    fetchCurrentBanners();
   }, []);
 
   // Update time every minute
@@ -99,26 +104,37 @@ const Banners = () => {
       setNewBannerPreview(URL.createObjectURL(file));
     }
   };
-
   const handleCancel = () => {
     setNewBannerFile(null);
     setNewBannerPreview(null);
     setError(null);
+    setBannerForm({
+      type: 'mobile',
+      title: '',
+      subtitle: '',
+      link: ''
+    });
   };
-
   const validateForm = () => {
     if (!newBannerFile) {
       toast.error('Please select a banner image');
       return false;
     }
+    if (!bannerForm.title.trim()) {
+      toast.error('Please enter a banner title');
+      return false;
+    }
     return true;
   };
-
   const handleSubmit = async () => {
     if (!validateForm()) return;
 
     const formData = new FormData();
     formData.append('image', newBannerFile);
+    formData.append('type', bannerForm.type);
+    formData.append('title', bannerForm.title);
+    formData.append('subtitle', bannerForm.subtitle);
+    formData.append('link', bannerForm.link);
 
     setLoading(true);
     setError(null);
@@ -133,10 +149,10 @@ const Banners = () => {
       if (response.status === 200 || response.status === 201) {
         toast.success('Banner uploaded successfully');
 
-        // Refresh current banner after successful upload
+        // Refresh current banners after successful upload
         const bannerResponse = await api.get('/banner');
         if (bannerResponse.status === 200 && bannerResponse.data) {
-          setCurrentBanner(bannerResponse.data);
+          setCurrentBanners(bannerResponse.data);
         }
 
         handleCancel();
@@ -164,59 +180,179 @@ const Banners = () => {
             {formattedDateTime} | {getGreeting()}
           </span>
           </div>
-        </div>
-
-        {/* Scrollable content section */}
+        </div>        {/* Scrollable content section */}
         <div className="flex-1 overflow-y-auto pb-24">
           <div className="mt-6">
-            <h3 className="mb-3 px-6 text-lg font-light text-[#333333]">Current Banner</h3>
+            <h3 className="mb-3 px-6 text-lg font-light text-[#333333]">Current Banners</h3>
 
-            {/* Current Banner Display */}
+            {/* Current Banners Display */}
             <div className="px-6 mb-6">
-              <div className="relative rounded-lg overflow-hidden w-full max-w-md">
-                {fetchLoading ? (
-                    <div className="w-full h-48 bg-gray-200 animate-pulse rounded-lg flex items-center justify-center">
-                      <p className="text-gray-500">Loading banner...</p>
-                    </div>
-                ) : currentBanner ? (
-                    <div className="relative">
-                      <img
-                          src={`${storageUrl}/${currentBanner.image_path}`}
-                          alt="Current Banner"
-                          className="w-full h-auto rounded-lg"
-                          onError={(e) => {
-                            e.target.onerror = null;
-                            e.target.src = "/hero/home back.webp";
-                            toast.error("Failed to load banner image");
-                          }}
-                      />
-                    </div>
-                ) : (
-                    <div className="relative">
-                      <img
-                          src="/hero/home back.webp"
-                          alt="Default Banner"
-                          className="w-full h-auto rounded-lg"
-                      />
-                      <div className="absolute inset-0 flex items-center justify-center bg-black/20 rounded-lg">
-                        <p className="text-white text-sm">No banner available</p>
-                      </div>
-                    </div>
-                )}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Mobile Banner */}
+                <div>
+                  <h4 className="text-sm font-medium text-gray-600 mb-2">Mobile Banner</h4>
+                  <div className="relative rounded-lg overflow-hidden w-full">
+                    {fetchLoading ? (
+                        <div className="w-full h-48 bg-gray-200 animate-pulse rounded-lg flex items-center justify-center">
+                          <p className="text-gray-500">Loading banner...</p>
+                        </div>
+                    ) : currentBanners.mobile ? (
+                        <div className="relative">
+                          <img
+                              src={`${storageUrl}/${currentBanners.mobile.image_path}`}
+                              alt="Mobile Banner"
+                              className="w-full h-auto rounded-lg"
+                              onError={(e) => {
+                                e.target.onerror = null;
+                                e.target.src = "/hero/home back.webp";
+                                toast.error("Failed to load mobile banner image");
+                              }}
+                          />
+                          {currentBanners.mobile.title && (
+                              <div className="absolute bottom-0 left-0 right-0 bg-black/70 text-white p-2">
+                                <p className="font-medium text-sm">{currentBanners.mobile.title}</p>
+                                {currentBanners.mobile.subtitle && (
+                                    <p className="text-xs text-gray-300">{currentBanners.mobile.subtitle}</p>
+                                )}
+                              </div>
+                          )}
+                        </div>
+                    ) : (
+                        <div className="relative">
+                          <img
+                              src="/hero/home back.webp"
+                              alt="Default Mobile Banner"
+                              className="w-full h-auto rounded-lg"
+                          />
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/20 rounded-lg">
+                            <p className="text-white text-sm">No mobile banner available</p>
+                          </div>
+                        </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Desktop Banner */}
+                <div>
+                  <h4 className="text-sm font-medium text-gray-600 mb-2">Desktop Banner</h4>
+                  <div className="relative rounded-lg overflow-hidden w-full">
+                    {fetchLoading ? (
+                        <div className="w-full h-48 bg-gray-200 animate-pulse rounded-lg flex items-center justify-center">
+                          <p className="text-gray-500">Loading banner...</p>
+                        </div>
+                    ) : currentBanners.desktop ? (
+                        <div className="relative">
+                          <img
+                              src={`${storageUrl}/${currentBanners.desktop.image_path}`}
+                              alt="Desktop Banner"
+                              className="w-full h-auto rounded-lg"
+                              onError={(e) => {
+                                e.target.onerror = null;
+                                e.target.src = "/hero/home back.webp";
+                                toast.error("Failed to load desktop banner image");
+                              }}
+                          />
+                          {currentBanners.desktop.title && (
+                              <div className="absolute bottom-0 left-0 right-0 bg-black/70 text-white p-2">
+                                <p className="font-medium text-sm">{currentBanners.desktop.title}</p>
+                                {currentBanners.desktop.subtitle && (
+                                    <p className="text-xs text-gray-300">{currentBanners.desktop.subtitle}</p>
+                                )}
+                              </div>
+                          )}
+                        </div>
+                    ) : (
+                        <div className="relative">
+                          <img
+                              src="/hero/home back.webp"
+                              alt="Default Desktop Banner"
+                              className="w-full h-auto rounded-lg"
+                          />
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/20 rounded-lg">
+                            <p className="text-white text-sm">No desktop banner available</p>
+                          </div>
+                        </div>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
 
             <h3 className="mb-3 px-6 text-lg font-light text-[#333333]">Upload New Banner</h3>
 
-            {/* Upload New Banner Section */}
+            {/* Banner Form */}
+            <div className="px-6 mb-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                {/* Banner Type */}
+                <div>
+                  <label htmlFor="banner-type" className="block text-sm font-medium text-gray-700 mb-1">
+                    Banner Type
+                  </label>
+                  <select
+                      id="banner-type"
+                      value={bannerForm.type}
+                      onChange={(e) => setBannerForm({ ...bannerForm, type: e.target.value })}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-black focus:border-transparent"
+                  >
+                    <option value="mobile">Mobile</option>
+                    <option value="desktop">Desktop</option>
+                  </select>
+                </div>
+
+                {/* Banner Title */}
+                <div>
+                  <label htmlFor="banner-title" className="block text-sm font-medium text-gray-700 mb-1">
+                    Title <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                      type="text"
+                      id="banner-title"
+                      value={bannerForm.title}
+                      onChange={(e) => setBannerForm({ ...bannerForm, title: e.target.value })}
+                      placeholder="Enter banner title"
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-black focus:border-transparent"
+                  />
+                </div>
+
+                {/* Banner Subtitle */}
+                <div>
+                  <label htmlFor="banner-subtitle" className="block text-sm font-medium text-gray-700 mb-1">
+                    Subtitle
+                  </label>
+                  <input
+                      type="text"
+                      id="banner-subtitle"
+                      value={bannerForm.subtitle}
+                      onChange={(e) => setBannerForm({ ...bannerForm, subtitle: e.target.value })}
+                      placeholder="Enter banner subtitle"
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-black focus:border-transparent"
+                  />
+                </div>
+
+                {/* Banner Link */}
+                <div>
+                  <label htmlFor="banner-link" className="block text-sm font-medium text-gray-700 mb-1">
+                    Link URL
+                  </label>
+                  <input
+                      type="url"
+                      id="banner-link"
+                      value={bannerForm.link}
+                      onChange={(e) => setBannerForm({ ...bannerForm, link: e.target.value })}
+                      placeholder="https://example.com"
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-black focus:border-transparent"
+                  />
+                </div>
+              </div>
+            </div>            {/* Upload New Banner Section */}
             <div className="px-6 mb-6">
               <div
-                  className={`border-2 border-dashed ${newBannerPreview ? 'border-green-300' : 'border-gray-300'} rounded-lg p-8 flex flex-col items-center justify-center w-full max-w-md ${newBannerPreview ? 'h-auto' : 'h-36'}`}
+                  className={`border-2 border-dashed ${newBannerPreview ? 'border-green-300' : 'border-gray-300'} rounded-lg p-8 flex flex-col items-center justify-center w-full ${newBannerPreview ? 'h-auto' : 'h-36'}`}
                   onDragOver={handleDragOver}
                   onDrop={handleDrop}
               >
                 {newBannerPreview ? (
-                    <div className="w-full relative">
+                    <div className="w-full relative max-w-md">
                       <img
                           src={newBannerPreview}
                           alt="New Banner Preview"
@@ -245,7 +381,9 @@ const Banners = () => {
                         <div className="flex flex-col items-center">
                           <FiUpload size={42} className="text-gray-400 mb-2" />
                           <p className="text-sm text-gray-700 font-medium">Drag and drop your new banner</p>
-                          <p className="text-xs text-gray-500 mt-1">Recommended size: 1200x400px (max 2MB)</p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            Recommended: Mobile (375x200px), Desktop (1200x400px) - Max 2MB
+                          </p>
                         </div>
                       </label>
                     </>

@@ -4,12 +4,16 @@ import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 
 function Newitem({ product }) {
-    const navigate = useNavigate();
-
-    // Calculate effective price after discount
+    const navigate = useNavigate();    // Calculate effective price after discount
     const effectivePrice = product.discount_percentage
-        ? product.price - (product.price * product.discount_percentage / 100)
-        : product.price;
+        ? parseFloat(product.price) - (parseFloat(product.price) * product.discount_percentage / 100)
+        : parseFloat(product.price);
+
+    // Ensure price is a valid number
+    const formatPrice = (price) => {
+        const numPrice = parseFloat(price);
+        return isNaN(numPrice) ? '0.00' : numPrice.toFixed(2);
+    };
 
     // Limit description length
     const truncateDescription = (text, maxLength = 120) => {
@@ -54,18 +58,16 @@ function Newitem({ product }) {
                     whileHover={{ scale: 1.01 }}
                 >
                     {product.name}
-                </motion.h3>
-
-                <div className="flex gap-3 items-center my-1">
+                </motion.h3>                <div className="flex gap-3 items-center my-1">
                     <motion.span
                         className="text-xl font-semibold text-[#F7A313]"
                         whileHover={{ scale: 1.05 }}
                     >
-                        Rs.{effectivePrice.toFixed(2)}
+                        Rs.{formatPrice(effectivePrice)}
                     </motion.span>
                     {product.discount_percentage > 0 && (
                         <span className="text-sm text-[12px] font-medium text-[#9F9A9A99] line-through">
-                            Rs.{product.price.toFixed(2)}
+                            Rs.{formatPrice(product.price)}
                         </span>
                     )}
                 </div>

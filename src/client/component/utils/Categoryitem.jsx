@@ -237,10 +237,8 @@ function Categoryitem() {
                         </motion.div>
                     )}
                 </AnimatePresence>
-            </motion.div>
-
-            {/* Custom CSS */}
-            <style jsx>{`
+            </motion.div>            {/* Custom CSS */}
+            <style>{`
                 .scrollbar-hide::-webkit-scrollbar {
                     display: none;
                 }

@@ -1,7 +1,43 @@
-import React from "react";
 import { motion } from "framer-motion";
+import { useState, useEffect, useCallback } from "react";
 
-const CartItem = ({ item, onRemove, onIncreaseQuantity, onDecreaseQuantity, isRemoving }) => {
+const CartItem = ({ item, onRemove, onIncreaseQuantity, onDecreaseQuantity, onWishUpdate, isRemoving }) => {
+  const [wishText, setWishText] = useState(item.wish || "");
+  const [showWishInput, setShowWishInput] = useState(!!item.wish); // Show by default if there's already a wish
+
+  // Debounce function to update wish text
+  const debounceWishUpdate = useCallback(
+    (text) => {
+      const timeoutId = setTimeout(() => {
+        if (onWishUpdate && text !== item.wish) {
+          onWishUpdate(item.id, text);
+        }
+      }, 1000); // 1 second delay
+
+      return () => clearTimeout(timeoutId);
+    },
+    [item.id, item.wish, onWishUpdate]
+  );
+
+  // Update wish text when it changes with debounce
+  useEffect(() => {
+    if (wishText !== item.wish) {
+      const cleanup = debounceWishUpdate(wishText);
+      return cleanup;
+    }
+  }, [wishText, debounceWishUpdate, item.wish]);
+
+  // Update local state when item.wish changes (from API)
+  useEffect(() => {
+    setWishText(item.wish || "");
+  }, [item.wish]);
+
+  // Helper function to safely format price
+  const formatPrice = (price) => {
+    const numPrice = parseFloat(price);
+    return isNaN(numPrice) ? '0.00' : numPrice.toFixed(2);
+  };
+
   return (
       <motion.div
           className={`relative flex flex-col bg-white border border-gray-300 rounded-lg p-4 mb-4 ${
@@ -39,7 +75,7 @@ const CartItem = ({ item, onRemove, onIncreaseQuantity, onDecreaseQuantity, isRe
             {/* Product Details */}
             <div>
               <h3 className="text-sm sm:text-base font-bold text-gray-800">{item.name.length > 15 ? `${item.name.substring(0, 15)}...` : item.name}</h3>
-
+              
               {/* Price Display - Show discount if applicable */}
               {item.discount_percentage > 0 ? (
                   <div className="flex items-center gap-2">
@@ -47,24 +83,134 @@ const CartItem = ({ item, onRemove, onIncreaseQuantity, onDecreaseQuantity, isRe
                       {item.quantity} x
                     </p>
                     <span className="">
-                    Rs.{item.effectivePrice.toFixed(2)}
+                    Rs.{formatPrice(item.effectivePrice)}
                   </span>
                     <span className="text-gray-400 line-through text-xs">
-                    Rs.{item.price.toFixed(2)}
+                    Rs.{formatPrice(item.price)}
                   </span>
                   </div>
               ) : (
                   <p className="text-xs sm:text-sm text-gray-600">
-                    {item.quantity} x Rs.{item.price.toFixed(2)}
+                    {item.quantity} x Rs.{formatPrice(item.price)}
                   </p>
               )}
             </div>
+            
+            {/* Wish Text Input for Cakes */}
+            {item.category_id === 1 && (
+              <div className="mt-3 bg-gradient-to-r from-amber-50 to-orange-50 p-3 rounded-lg border border-amber-200">
+                {/* Toggle button to show/hide message input */}
+                <button
+                  onClick={() => setShowWishInput(!showWishInput)}
+                  className="flex items-center justify-between w-full cursor-pointer"
+                >
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center justify-center w-6 h-6 bg-amber-100 rounded-full">
+                      <span className="text-amber-600 text-sm">✨</span>
+                    </div>
+                    <label className="text-sm font-medium text-amber-800 cursor-pointer">
+                      {wishText ? "Your special message" : "Add your special message (optional)"}
+                    </label>
+                  </div>
+                  
+                  {/* Down/Up arrow based on state */}
+                  <div className="text-amber-600">
+                    {showWishInput ? (
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                      </svg>
+                    ) : (
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    )}
+                  </div>
+                </button>
+                
+                {/* Show message status if not expanded but has text */}
+                {!showWishInput && wishText && (
+                  <div className="mt-2 flex items-center gap-1 text-xs text-green-600 bg-green-50 px-2 py-1 rounded-full w-fit">
+                    <span>✓</span>
+                    <span>Message added</span>
+                  </div>
+                )}
+                
+                {/* Collapsible message section */}
+                {showWishInput && (
+                  <>
+                    <div className="relative mt-2">
+                      <textarea
+                        placeholder="Make this cake extra special with your personal message... 🎂"
+                        value={wishText}
+                        onChange={(e) => setWishText(e.target.value)}
+                        className="w-full text-sm border-2 border-amber-200 rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-amber-400 transition-all duration-200 bg-white/80 backdrop-blur-sm placeholder:text-amber-400/70"
+                        maxLength={item.character_count > 0 ? item.character_count : 100}
+                        rows="2"
+                      />
+                      
+                      {/* Floating character count */}
+                      <div className="absolute bottom-2 right-2 bg-white/90 backdrop-blur-sm rounded-full px-2 py-1 shadow-sm">
+                        <span className={`text-xs font-medium transition-colors ${
+                          item.character_count > 0 && wishText.length > item.character_count * 0.8 
+                            ? 'text-amber-600' 
+                            : 'text-gray-500'
+                        }`}>
+                          {wishText.length}{item.character_count > 0 ? `/${item.character_count}` : ''}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Status indicators */}
+                    <div className="flex justify-between items-center mt-2">
+                      <div className="flex items-center gap-2">
+                        {wishText.length > 0 && (
+                          <div className="flex items-center gap-1 text-xs text-green-600 bg-green-50 px-2 py-1 rounded-full">
+                            <span>✓</span>
+                            <span>Message added</span>
+                          </div>
+                        )}
+                        {item.character_count > 0 && wishText.length > item.character_count * 0.9 && (
+                          <div className="flex items-center gap-1 text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded-full">
+                            <span>⚠</span>
+                            <span>{item.character_count - wishText.length} left</span>
+                          </div>
+                        )}
+                      </div>
+                      
+                      {/* Auto-save indicator */}
+                      {wishText !== item.wish && wishText.length > 0 && (
+                        <div className="flex items-center gap-1 text-xs text-blue-600">
+                          <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>
+                          <span>Auto-saving...</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Quick suggestions for empty state */}
+                    {wishText.length === 0 && (
+                      <div className="mt-2 flex flex-wrap gap-1">
+                        <span className="text-xs text-amber-600 mb-1">Quick suggestions:</span>
+                        {['Happy Birthday! 🎉', 'Congratulations! 🎊', 'With Love ❤️'].map((suggestion, index) => (
+                          <button
+                            key={index}
+                            onClick={() => setWishText(suggestion)}
+                            className="text-xs bg-amber-100 hover:bg-amber-200 text-amber-700 px-2 py-1 rounded-full transition-colors duration-200"
+                          >
+                            {suggestion}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
 
             {/* Bottom Row: Total Price and Quantity Controls */}
             <div className="flex justify-between items-center mt-3">
               {/* Total Price */}
               <div className="text-base sm:text-lg font-semibold text-amber-500">
-                LKR.{(item.effectivePrice * item.quantity).toFixed(2)}
+                LKR.{formatPrice(parseFloat(item.effectivePrice || item.price || 0) * item.quantity)}
               </div>
 
               {/* Quantity Controls */}

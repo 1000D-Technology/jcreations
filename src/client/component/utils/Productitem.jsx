@@ -17,6 +17,20 @@ const Productitem = forwardRef(({ onLoadingChange }, ref) => {
   // Get cart functions from the store
   const { cartItems, increaseItemQuantity } = useCartStore();
 
+  // Ensure price is a valid number and format it
+  const formatPrice = (price) => {
+    const numPrice = parseFloat(price);
+    return isNaN(numPrice) ? '0.00' : numPrice.toFixed(2);
+  };
+
+  // Calculate discounted price safely
+  const calculateDiscountedPrice = (price, discountPercentage) => {
+    const numPrice = parseFloat(price);
+    const numDiscount = parseFloat(discountPercentage);
+    if (isNaN(numPrice) || isNaN(numDiscount)) return 0;
+    return numPrice * (1 - numDiscount / 100);
+  };
+
   const fetchProducts = async () => {
     try {
       setLoading(true);
@@ -201,15 +215,15 @@ const Productitem = forwardRef(({ onLoadingChange }, ref) => {
                     {product.discount_percentage > 0 ? (
                         <>
                           <p className="text-[#F7A313] lg:text-lg font-semibold">
-                            Rs.{(product.price * (1 - product.discount_percentage / 100)).toFixed(2)}
+                            Rs.{formatPrice(calculateDiscountedPrice(product.price, product.discount_percentage))}
                           </p>
                           <p className="text-[#A5A0A0] text-[10px] line-through">
-                            Rs.{product.price.toFixed(2)}
+                            Rs.{formatPrice(product.price)}
                           </p>
                         </>
                     ) : (
                         <p className="text-[#F7A313] lg:text-lg font-semibold">
-                          Rs.{product.price.toFixed(2)}
+                          Rs.{formatPrice(product.price)}
                         </p>
                     )}
                   </motion.div>
@@ -235,7 +249,7 @@ const Productitem = forwardRef(({ onLoadingChange }, ref) => {
               </div>
             </motion.div>
         ))}
-        {loading && <div className="col-span-2 text-center mt-4">Loading more products...</div>}
+        {loading && <div className="col-span-2 text-center mt-4 lg:block hidden">Loading more products...</div>}
       </>
   );
 });

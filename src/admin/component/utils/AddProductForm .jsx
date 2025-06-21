@@ -6,9 +6,9 @@ const AddProductForm = ({ onSuccess, initialData, isEditing }) => {
     const [name, setName] = useState("");
     const [category, setCategory] = useState("");
     const [price, setPrice] = useState("");
-    const [discountPercentage, setDiscountPercentage] = useState("");
-    const [discountedPrice, setDiscountedPrice] = useState("");
+    const [discountPercentage, setDiscountPercentage] = useState("");    const [discountedPrice, setDiscountedPrice] = useState("");
     const [description, setDescription] = useState("");
+    const [characterCount, setCharacterCount] = useState("");
     const [categories, setCategories] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
@@ -29,9 +29,7 @@ const AddProductForm = ({ onSuccess, initialData, isEditing }) => {
 
     const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB in bytes
     const MAX_IMAGES = 3;
-    const DEFAULT_IMAGE = "/placeholder.png";
-
-    // Load initial data if editing
+    const DEFAULT_IMAGE = "/placeholder.png";    // Load initial data if editing
     useEffect(() => {
         if (initialData) {
             setName(initialData.name || "");
@@ -40,6 +38,7 @@ const AddProductForm = ({ onSuccess, initialData, isEditing }) => {
             setDiscountPercentage(initialData.discount_percentage || "");
             setDiscountedPrice(initialData.discounted_price || "");
             setDescription(initialData.description || "");
+            setCharacterCount(initialData.character_count || "");
 
             // Handle existing images if any
             if (initialData.images && initialData.images.length) {
@@ -172,14 +171,17 @@ const AddProductForm = ({ onSuccess, initialData, isEditing }) => {
         if (!validateForm()) return;
 
         setLoading(true);
-        const formDataToSend = new FormData();
-
-        // Append text fields
+        const formDataToSend = new FormData();        // Append text fields
         formDataToSend.append('name', name);
         formDataToSend.append('category_id', category);
         formDataToSend.append('price', price);
         formDataToSend.append('description', description);
         formDataToSend.append('status', 'in_stock');
+
+        // Add character count if it's provided
+        if (characterCount) {
+            formDataToSend.append('character_count', characterCount);
+        }
 
         // Add either discount percentage or discounted price (not both)
         if (discountPercentage) {
@@ -218,15 +220,14 @@ const AddProductForm = ({ onSuccess, initialData, isEditing }) => {
         } finally {
             setLoading(false);
         }
-    };
-
-    const resetForm = () => {
+    };    const resetForm = () => {
         setName("");
         setCategory("");
         setPrice("");
         setDiscountPercentage("");
         setDiscountedPrice("");
         setDescription("");
+        setCharacterCount("");
         setFormData({
             image1: null,
             image2: null,
@@ -242,6 +243,13 @@ const AddProductForm = ({ onSuccess, initialData, isEditing }) => {
     // Get count of active images
     const getImageCount = () => {
         return Object.values(previews).filter(img => img !== null).length;
+    };
+
+    // Check if selected category is cakes
+    const isCakeCategory = () => {
+        const selectedCategory = categories.find(cat => cat.id.toString() === category);
+        return selectedCategory?.name?.toLowerCase() === 'cakes' || 
+               (category === "1" && categories.length === 0); // fallback for hardcoded option
     };
 
     return (
@@ -350,9 +358,7 @@ const AddProductForm = ({ onSuccess, initialData, isEditing }) => {
                             />
                         </div>
                     </div>
-                </div>
-
-                {/* Product Description */}
+                </div>                {/* Product Description */}
                 <div className="transition-all duration-300 hover:shadow-md">
                     <textarea
                         placeholder="Product Description (optional)"
@@ -362,6 +368,22 @@ const AddProductForm = ({ onSuccess, initialData, isEditing }) => {
                         className="border border-gray-300 rounded-lg p-3 w-full bg-white/70  transition-all focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
                     />
                 </div>
+
+                {/* Character Count - Only show for cakes category */}
+                {isCakeCategory() && (
+                    <div className="transition-all duration-300 hover:shadow-md">
+                        <input
+                            type="number"
+                            placeholder="Character Count"
+                            value={characterCount}
+                            onChange={(e) => setCharacterCount(e.target.value)}
+                            className="border border-gray-300 rounded-lg p-3 w-full bg-white/70 backdrop-blur-sm transition-all focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
+                            min="1"
+                            step="1"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">Number of characters for cake customization</p>
+                    </div>
+                )}
 
                 {/* Image Upload */}
                 <div

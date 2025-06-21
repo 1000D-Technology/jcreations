@@ -1,6 +1,6 @@
 import React from 'react';
 
-const PaymentMethodSelector = ({ total = 0, onSelectPaymentMethod, selectedMethod }) => {
+const PaymentMethodSelector = ({ total = 0, onSelectPaymentMethod, selectedMethod, codLimit = 2000 }) => {
   return (
     <div className="bg-white border-1 border-gray-300 rounded-lg p-6 mx-auto">
       <h3 className="text-lg font-semibold mb-4">Payment Method</h3>
@@ -19,7 +19,7 @@ const PaymentMethodSelector = ({ total = 0, onSelectPaymentMethod, selectedMetho
             <span>Online Payment</span>
           </label>
         </div>
-        {total <= 2000 && (
+        {total <= codLimit && (
           <div className="form-group flex flex-col items-start">
             <label className="flex items-center space-x-2">
               <img src="/carticons/Cash%20on%20Delivery%20Icon.png" alt="Cash on Delivery" className="w-6 h-6" />

@@ -2,7 +2,7 @@ import React from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import CartItem from "./CartItem.jsx";
 
-const CartItemDemo = ({ cartItems, onRemove, onIncreaseQuantity, onDecreaseQuantity, removingItems = [] }) => {
+const CartItemDemo = ({ cartItems, onRemove, onIncreaseQuantity, onDecreaseQuantity, onWishUpdate, removingItems = [] }) => {
     return (
         <div className="flex flex-col -mt-20 lg:mt-0 space-y-4">
             <div className="bg-white rounded-lg border border-gray-200 p-4 md:p-6">
@@ -16,8 +16,7 @@ const CartItemDemo = ({ cartItems, onRemove, onIncreaseQuantity, onDecreaseQuant
                                 exit={{ opacity: 0, height: 0, marginBottom: 0 }}
                                 transition={{ duration: 0.3 }}
                                 className={removingItems.includes(item.id) ? "opacity-50 scale-95 transition-all duration-300" : ""}
-                            >
-                                <CartItem
+                            >                                <CartItem
                                     item={{
                                         ...item,
                                         // Pass both original and effective price for display
@@ -28,6 +27,7 @@ const CartItemDemo = ({ cartItems, onRemove, onIncreaseQuantity, onDecreaseQuant
                                     onRemove={onRemove}
                                     onIncreaseQuantity={onIncreaseQuantity}
                                     onDecreaseQuantity={onDecreaseQuantity}
+                                    onWishUpdate={onWishUpdate}
                                     isRemoving={removingItems.includes(item.id)}
                                 />
                             </motion.div>

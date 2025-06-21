@@ -131,8 +131,7 @@ const OrderDetailsModal = ({ isOpen, onClose, orderId }) => {
                         <div className="border-t pt-4">
                             <h3 className="font-medium mb-2">Order Items</h3>
                             <div className="max-h-60 overflow-y-auto">
-                                <table className="w-full text-sm text-left">
-                                    <thead className="bg-gray-50 sticky top-0">
+                                <table className="w-full text-sm text-left">                                    <thead className="bg-gray-50 sticky top-0">
                                     <tr>
                                         <th className="px-3 py-2 text-xs font-medium text-gray-600 uppercase tracking-wider">Product</th>
                                         <th className="px-3 py-2 text-xs font-medium text-gray-600 uppercase tracking-wider">Price</th>
@@ -143,10 +142,21 @@ const OrderDetailsModal = ({ isOpen, onClose, orderId }) => {
                                     <tbody className="divide-y divide-gray-200">
                                     {(order.items || order.order_items || []).map((item, index) => (
                                         <tr key={index} className="hover:bg-gray-50">
-                                            <td className="px-3 py-3">
-                                                <div>
+                                            <td className="px-3 py-3">                                                <div>
                                                     <p className="font-medium">{item.product?.name || item.product_name || 'Unknown Product'}</p>
                                                     {item.variant && <p className="text-xs text-gray-500">{item.variant}</p>}
+                                                    {/* Display wish message when it exists */}
+                                                    {item.wish && (
+                                                        <div className="mt-2 p-3 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-lg">
+                                                            <div className="flex items-center gap-2 mb-1">
+                                                                <div className="flex items-center justify-center w-5 h-5 bg-amber-100 rounded-full">
+                                                                    <span className="text-amber-600 text-xs">✨</span>
+                                                                </div>
+                                                                <span className="text-xs font-medium text-amber-800">Special Message:</span>
+                                                            </div>
+                                                            <p className="text-sm text-amber-700 italic font-medium pl-7">"{item.wish}"</p>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </td>
                                             <td className="px-3 py-3">
