@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence } from 'framer-motion';
 import { IoMdClose } from 'react-icons/io';
 import api from "../../utils/axios.js";
-import toast from 'react-hot-toast';
 import { useNavigate, useParams } from 'react-router-dom';
 import SearchItem from "./utils/Searchitem.jsx";
 import { createPortal } from 'react-dom';
@@ -17,41 +16,18 @@ function SearchByCategory({ isOpen, onClose, initialCategory }) {
     const isStandalonePage = !!categoryFromURL;
     const effectiveCategoryId = categoryFromURL || initialCategory;
 
-    // Search state
-    const [searchQuery, setSearchQuery] = useState('');
-    const [recentSearches, setRecentSearches] = useState(() => {
-        const saved = localStorage.getItem('jcreations_recent_searches');
-        return saved ? JSON.parse(saved) : ['birthday cake', 'chocolate cupcake', 'wedding cake'];
-    });
-
     // UI states
-    const [showFilters, setShowFilters] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
-    const [loadingMore, setLoadingMore] = useState(false);
 
     // Filter states
     const [categoryId, setCategoryId] = useState('');
-    const [priceRange, setPriceRange] = useState([0, 10000]);
-    const [status, setStatus] = useState('');
-    const [categories, setCategories] = useState([]);
     const [products, setProducts] = useState([]);
-    const [searchLimit, setSearchLimit] = useState(20);
-    const [hasMore, setHasMore] = useState(false);
     const [selectedCategory, setSelectedCategory] = useState(null);
-
-    // Store current search params for pagination
-    const searchParamsRef = useRef({
-        query: '',
-        categoryId: '',
-        priceRange: [0, 10000],
-        status: ''
-    });
 
     // References
     const isMounted = useRef(true);
     const abortControllerRef = useRef(null);
-    const hasInitialSearchRef = useRef(false);
 
     // Navigate to home page when back button is clicked
     const handleBack = () => {
@@ -62,11 +38,10 @@ function SearchByCategory({ isOpen, onClose, initialCategory }) {
     useEffect(() => {
         if ((isOpen || isStandalonePage) && effectiveCategoryId) {
             setCategoryId(effectiveCategoryId);
-            searchParamsRef.current.categoryId = effectiveCategoryId;
 
-            // Pass effectiveCategoryId directly to searchProducts
+            // Load products for this category
             setLoading(true);
-            searchProducts(false, effectiveCategoryId);
+            searchProducts(effectiveCategoryId);
 
             // Fetch category details
             fetchCategoryDetails(effectiveCategoryId);
@@ -113,7 +88,7 @@ function SearchByCategory({ isOpen, onClose, initialCategory }) {
     }, []);
 
     // Search products function
-    const searchProducts = useCallback(async (isLoadingMore = false, forcedCategoryId = null) => {
+    const searchProducts = useCallback(async (forcedCategoryId = null) => {
         if (!isOpen && !isStandalonePage) return;
 
         // Cancel previous request
@@ -122,36 +97,18 @@ function SearchByCategory({ isOpen, onClose, initialCategory }) {
         }
 
         abortControllerRef.current = new AbortController();
-
-        if (isLoadingMore) {
-            setLoadingMore(true);
-        } else {
-            setLoading(true);
-        }
+        setLoading(true);
         setError(null);
 
         try {
             // Build query params
             const queryParams = {};
-            if (searchQuery.trim()) queryParams.q = searchQuery.trim();
 
             // Use forcedCategoryId if provided, otherwise use categoryId state
             const effectiveCategoryId = forcedCategoryId || categoryId;
             if (effectiveCategoryId) queryParams.category_id = effectiveCategoryId;
 
-            if (priceRange[0] > 0) queryParams.min_price = priceRange[0];
-            if (priceRange[1] < 10000) queryParams.max_price = priceRange[1];
-            if (status) queryParams.status = status;
-
-            // Save current search params
-            searchParamsRef.current = {
-                query: searchQuery.trim(),
-                categoryId: effectiveCategoryId,
-                priceRange: [...priceRange],
-                status
-            };
-
-            const endpoint = `/products/search/${searchLimit}`;
+            const endpoint = `/products/search/50`; // Get up to 50 products at once
 
             // API request
             const response = await api.get(endpoint, {
@@ -162,20 +119,9 @@ function SearchByCategory({ isOpen, onClose, initialCategory }) {
             if (isMounted.current) {
                 if (response.data && Array.isArray(response.data)) {
                     const formattedProducts = response.data.map(formatProductData).filter(Boolean);
-
-                    if (isLoadingMore) {
-                        setProducts(prev => [...prev, ...formattedProducts]);
-                    } else {
-                        setProducts(formattedProducts);
-                    }
-
-                    // Check for more items
-                    setHasMore(formattedProducts.length >= 20);
+                    setProducts(formattedProducts);
                 } else {
-                    if (!isLoadingMore) {
-                        setProducts([]);
-                    }
-                    setHasMore(false);
+                    setProducts([]);
                     setError("Invalid response format from server");
                 }
             }
@@ -183,32 +129,14 @@ function SearchByCategory({ isOpen, onClose, initialCategory }) {
             if (err.name !== 'AbortError' && isMounted.current) {
                 console.error("Search error:", err);
                 setError("Failed to search products. Please try again.");
-                if (!isLoadingMore) {
-                    setProducts([]);
-                }
-                setHasMore(false);
+                setProducts([]);
             }
         } finally {
             if (isMounted.current) {
                 setLoading(false);
-                setLoadingMore(false);
             }
         }
-    }, [isOpen, isStandalonePage, searchQuery, categoryId, priceRange, status, searchLimit, formatProductData]);
-
-    // Handle load more
-    const handleLoadMore = useCallback(() => {
-        setSearchLimit(prevLimit => prevLimit + 20);
-    }, []);
-
-    // Watch for searchLimit changes
-    useEffect(() => {
-        if ((!isOpen && !isStandalonePage) || loading) return;
-
-        if (searchLimit > 20 && !loadingMore) {
-            searchProducts(true);
-        }
-    }, [searchLimit, isOpen, isStandalonePage, loading, loadingMore, searchProducts]);
+    }, [isOpen, isStandalonePage, categoryId, formatProductData]);
 
     // Render content for both modal and standalone page
     const renderContent = () => (
@@ -236,14 +164,12 @@ function SearchByCategory({ isOpen, onClose, initialCategory }) {
                 </h2>
 
                 {!isStandalonePage && (
-                    <motion.button
+                    <button
                         onClick={onClose}
-                        whileHover={{scale: 1.1}}
-                        whileTap={{scale: 0.95}}
                         className="p-2 rounded-full hover:bg-gray-100"
                     >
                         <IoMdClose className="text-xl"/>
-                    </motion.button>
+                    </button>
                 )}
 
                 {isStandalonePage && <div className="w-10"></div>} {/* Spacer for alignment */}
@@ -261,7 +187,7 @@ function SearchByCategory({ isOpen, onClose, initialCategory }) {
             {/* Results section */}
             <div className="flex-1 overflow-auto p-5 pb-24">
                 {/* Loading state */}
-                {loading && !loadingMore && (
+                {loading && (
                     <div className="flex flex-col items-center justify-center py-10">
                         <div className="w-12 h-12 border-4 border-[#F7A313] border-t-transparent rounded-full animate-spin"></div>
                         <p className="mt-4 text-gray-600">Loading products...</p>
@@ -273,7 +199,7 @@ function SearchByCategory({ isOpen, onClose, initialCategory }) {
                     <div className="text-center py-10">
                         <p className="text-red-500">{error}</p>
                         <button
-                            onClick={() => searchProducts(false)}
+                            onClick={() => searchProducts()}
                             className="mt-4 px-4 py-2 bg-gray-100 rounded-full text-gray-700 hover:bg-gray-200"
                         >
                             Try Again
@@ -284,12 +210,12 @@ function SearchByCategory({ isOpen, onClose, initialCategory }) {
                 {/* Empty results */}
                 {!loading && !error && products.length === 0 && (
                     <div className="text-center py-10">
-                        <p className="text-gray-600">No products found. Try adjusting your filters.</p>
+                        <p className="text-gray-600">No products found in this category.</p>
                     </div>
                 )}
 
                 {/* Products grid */}
-                {products.length > 0 && (
+                {!loading && products.length > 0 && (
                     <div>
                         <h3 className="text-sm font-medium text-gray-500 mb-4">{products.length} Results Found</h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -297,24 +223,6 @@ function SearchByCategory({ isOpen, onClose, initialCategory }) {
                                 <SearchItem key={product.id || index} product={product} />
                             ))}
                         </div>
-
-                        {/* Load more button */}
-                        {loadingMore ? (
-                            <div className="flex justify-center mt-6">
-                                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-[#F7A313]"></div>
-                            </div>
-                        ) : hasMore && (
-                            <div className="flex justify-center mt-6">
-                                <motion.button
-                                    onClick={handleLoadMore}
-                                    whileHover={{ scale: 1.03 }}
-                                    whileTap={{ scale: 0.97 }}
-                                    className="px-4 py-2 bg-gray-100 rounded-full text-gray-700 hover:bg-gray-200"
-                                >
-                                    Load More
-                                </motion.button>
-                            </div>
-                        )}
                     </div>
                 )}
             </div>
@@ -333,15 +241,11 @@ function SearchByCategory({ isOpen, onClose, initialCategory }) {
     return createPortal(
         <AnimatePresence>
             {isOpen && (
-                <motion.div
+                <div
                     className="fixed inset-0 bg-white z-50 flex justify-center overflow-auto"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.2 }}
                 >
                     {renderContent()}
-                </motion.div>
+                </div>
             )}
         </AnimatePresence>,
         document.body
