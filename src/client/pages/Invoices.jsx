@@ -168,13 +168,13 @@ function Invoices() {
                     <h3 className="font-semibold text-gray-700 mb-2">Terms & Conditions</h3>
                     <p>1. All items are non-refundable once delivered.</p>
                     <p>2. Please check the product upon delivery.</p>
-                    <p>3. For any queries contact us at 070 568 7994.</p>
+                    <p>3. For any queries contact us at 077 543 2440.</p>
                 </div>
 
                 {/* Thank You Note */}
                 <div className="mt-10 text-center">
                     <p className="font-medium text-gray-700">Thank you for your order!</p>
-                    <p className="text-sm text-gray-600 mt-1">Visit us at www.jcreations.com</p>
+                    <p className="text-sm text-gray-600 mt-1">Visit us at www.jcreations.lk</p>
                 </div>
 
                 {/* Receipt footer */}
