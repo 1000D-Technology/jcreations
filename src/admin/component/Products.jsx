@@ -30,7 +30,7 @@ function Products() {
 
     // Pagination states
     const [currentPage, setCurrentPage] = useState(1);
-    const itemsPerPage = 20;
+    const itemsPerPage = 10000000000;
 
     // Daily deals update state
     const [updatingDailyDeals, setUpdatingDailyDeals] = useState(null);
@@ -97,7 +97,6 @@ function Products() {
     const totalPages = Math.ceil(displayedProducts.length / itemsPerPage);
 
     const fetchProducts = async () => {
-        // Existing code...
         setLoading(true);
         try {
             console.log('Fetching products from admin API');
@@ -105,20 +104,19 @@ function Products() {
             // Get token from auth store
             const token = user?.token;
 
-            let response;
-            try {
-                response = await api.get('/admin/products', {
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json'
-                    }
-                });
-                console.log('Successfully fetched from /admin/products');
-            } catch (err) {
-                console.log('Failed to fetch from /admin/products, trying fallback to /products');
-                response = await api.get('/products');
-                console.log('Successfully fetched from /products');
-            }
+            // Use the correct endpoint with limit parameter
+            const endpoint = `/admin/products/limit/${itemsPerPage}`;
+
+            const response = await api.get(endpoint, {
+                params: {
+                    page: currentPage,
+                    per_page: itemsPerPage
+                },
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
 
             console.log('API Response status:', response.status);
             console.log('API Response data:', response.data);
@@ -146,12 +144,17 @@ function Products() {
 
             console.log('Processed product data:', productData);
             setProducts(productData);
-            setDisplayedProducts(productData); // Set displayed products directly
+            setDisplayedProducts(productData);
             setError(null);
 
-            if (productData.length > 0) {
+            // Get total count from headers if available
+            const totalCount = parseInt(response.headers['x-total-count'] || response.headers['X-Total-Count']);
+            if (totalCount) {
+                const totalPages = Math.ceil(totalCount / itemsPerPage);
+                console.log(`Total products: ${totalCount}, Total pages: ${totalPages}`);
+            }
 
-            } else {
+            if (productData.length === 0) {
                 toast.info('No products found');
             }
         } catch (error) {
@@ -170,6 +173,11 @@ function Products() {
             setLoading(false);
         }
     };
+
+// Update useEffect to fetch products when pagination changes
+    useEffect(() => {
+        fetchProducts();
+    }, [currentPage, itemsPerPage]); // Re-fetch when page or items per page changes
 
     // Pagination navigation functions
     const goToPage = (pageNumber) => {
@@ -515,7 +523,7 @@ function Products() {
                             ) : (
                                 <>
                                     <div className="overflow-x-auto border border-gray-200 rounded-lg shadow-sm">
-                                        <div className="max-h-[400px] overflow-y-auto">
+                                        <div className="max-h-[550px] overflow-y-auto">
                                             <table className="min-w-full divide-y divide-gray-200 table-fixed">                                                <thead className="bg-white sticky top-0 z-10 shadow-sm">
                                                 <tr>
                                                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider w-[5%]">ID</th>
@@ -625,7 +633,7 @@ function Products() {
                                     </div>
 
                                     {/* Pagination Controls */}
-                                    <div className="flex justify-between items-center mt-4 px-2">
+                                    <div className="flex hidden justify-between items-center mt-4 px-2">
                                         <div className="text-sm text-gray-500">
                                             Showing {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, displayedProducts.length)} of {displayedProducts.length} products
                                         </div>
