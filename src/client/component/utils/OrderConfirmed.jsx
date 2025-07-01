@@ -26,7 +26,7 @@ const OrderConfirmed = ({ id }) => {
 
         {/* Order Number */}
         <p className="text-md text-black mb-6">
-          Order Number: <span className="font-bold">#{id}</span>
+
         </p>
 
         {/* Continue Shopping Button */}
@@ -41,12 +41,12 @@ const OrderConfirmed = ({ id }) => {
         <p className="text-sm text-gray-400 mt-3 mb-6">
           Questions? Contact us at{" "}
           <a
-            href="mailto:support@JCreations.com"
+            href="mailto:jcreations.lk@gmail.com"
             className="underline"
           >
-            support@JCreations.com
+            jcreations.lk@gmail.com
           </a>{" "}
-          or call <span className="font-medium">070 568 7994</span>.
+          or call <span className="font-medium">077 543 2440</span>.
         </p>
       </div>
     </div>
