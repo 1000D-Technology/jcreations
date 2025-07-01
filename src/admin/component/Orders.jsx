@@ -15,7 +15,7 @@ const Orders = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(null);
     const [currentPage, setCurrentPage] = useState(1);
-    const [itemsPerPage] = useState(20);
+    const [itemsPerPage] = useState(10000000000000000);
     const [updatingStatus, setUpdatingStatus] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [startDate, setStartDate] = useState('');

@@ -108,7 +108,7 @@ function SearchByCategory({ isOpen, onClose, initialCategory }) {
             const effectiveCategoryId = forcedCategoryId || categoryId;
             if (effectiveCategoryId) queryParams.category_id = effectiveCategoryId;
 
-            const endpoint = `/products/search/50`; // Get up to 50 products at once
+            const endpoint = `/products/search/100000000000`; // Get up to 50 products at once
 
             // API request
             const response = await api.get(endpoint, {

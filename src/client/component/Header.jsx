@@ -4,8 +4,7 @@ import { FaPhoneAlt } from "react-icons/fa";
 import { LuShoppingBag } from "react-icons/lu";
 import { Link } from "react-router-dom";
 import Search from './Search';
-import axios from 'axios';
-// Import cart store
+
 import useCartStore from '../../stores/cartStore';
 import api from "../../utils/axios.js";
 
