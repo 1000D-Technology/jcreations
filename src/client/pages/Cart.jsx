@@ -39,7 +39,8 @@ function Cart() {
         customer_name: '',
         contact_number: '',
         city: '',
-        address: ''
+        address: '',
+        deliveryDateTime: '' // Add delivery date/time if needed
     });
 
     // Add a new state variable at the top with your other state variables
@@ -298,7 +299,10 @@ function Cart() {
                     contact_number: deliveryInfo.contact_number,
                     city: deliveryInfo.city,
                     address: deliveryInfo.address,
-                    req_datetime: new Date().toISOString(),
+                    // Use the selected delivery date/time if available, otherwise use current time
+                    req_datetime: deliveryInfo.deliveryDateTime
+                        ? new Date(deliveryInfo.deliveryDateTime).toISOString()
+                        : new Date().toISOString(),
                     total_amount: total.toFixed(2) // Include calculated total with discounts
                 };
 
