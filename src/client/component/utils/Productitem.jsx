@@ -74,7 +74,7 @@ const Productitem = forwardRef(({ onLoadingChange }, ref) => {
     loadMore: () => {
       console.log("loadMore called, current limit:", limit);
       if (!loading) {
-        setLimit(prevLimit => prevLimit + 20);
+        setLimit(prevLimit => prevLimit + 100);
       }
     },
     hasMore: hasMore,

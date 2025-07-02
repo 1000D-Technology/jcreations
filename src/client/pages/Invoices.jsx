@@ -90,9 +90,14 @@ function Invoices() {
                     </div>
                     <div className="text-right">
                         <h2 className="text-xl font-bold text-gray-800 uppercase mb-1">Invoice</h2>
-                        <p className="text-sm text-gray-600"><span className="font-semibold">Invoice #:</span> {invoice.id}</p>
-                        <p className="text-sm text-gray-600"><span className="font-semibold">Date:</span> {formatDate(invoice.created_at)}</p>
-                        <p className="text-sm text-gray-600"><span className="font-semibold">Status:</span> {invoice.status}</p>
+                        <p className="text-sm text-gray-600"><span
+                            className="font-semibold">Invoice #:</span> {invoice.id}</p>
+                        <p className="text-sm text-gray-600"><span
+                            className="font-semibold">Date:</span> {formatDate(invoice.created_at)}</p>
+                        <p className="text-sm text-gray-600"><span
+                            className="font-semibold">Status:</span> {invoice.status}</p>
+                        <p className="text-sm text-gray-600"><span
+                            className="font-semibold">Requested Date:</span> {formatDate(invoice.req_datetime)}</p>
                     </div>
                 </div>
 

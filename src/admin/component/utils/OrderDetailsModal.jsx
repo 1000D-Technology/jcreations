@@ -109,13 +109,15 @@ const OrderDetailsModal = ({ isOpen, onClose, orderId }) => {
                                 Order #{order.id}
                             </h2>
                             <p className="text-sm text-gray-500">Date: {formatDateTime(order.created_at)}</p>
-                            <span className={`inline-block text-xs font-medium px-2 py-1 rounded-full mt-2 ${getStatusClass(order.status)}`}>
+                            <span
+                                className={`inline-block text-xs font-medium px-2 py-1 rounded-full mt-2 ${getStatusClass(order.status)}`}>
                                 {order.status?.charAt(0).toUpperCase() + order.status?.slice(1) || 'Unknown'}
                             </span>
+                            <p className="text-lg text-green-500">Requested Date: {formatDateTime(order.req_datetime)}</p>
                         </div>
 
                         <div className="space-y-1 mb-4 text-sm text-gray-700">
-                            <p><span className="font-medium">Customer:</span> {order.customer?.name || order.customer_name || 'N/A'}</p>
+                        <p><span className="font-medium">Customer:</span> {order.customer?.name || order.customer_name || 'N/A'}</p>
                             <p><span className="font-medium">Contact:</span> {order.customer?.phone || order.contact_number || 'N/A'}</p>
                             <p><span className="font-medium">Email:</span> {order.customer?.email || order.email || 'N/A'}</p>
                             <p><span className="font-medium">Address:</span> {order.shipping_address || order.address || 'N/A'}</p>
