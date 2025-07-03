@@ -222,7 +222,7 @@ function Cart() {
     useEffect(() => {
         // Load Payhere SDK script
         const script = document.createElement('script');
-        script.src = 'https://www.payhere.lk/lib/payhere.js';
+        // script.src = 'https://www.payhere.lk/lib/payhere.js';
         script.async = true;
         document.body.appendChild(script);
 
