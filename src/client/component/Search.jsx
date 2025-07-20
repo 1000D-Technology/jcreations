@@ -28,8 +28,10 @@ function Search({ isOpen, onClose, initialCategory }) {
     const [status, setStatus] = useState('');
     const [categories, setCategories] = useState([]);
     const [products, setProducts] = useState([]);
-    const [searchLimit, setSearchLimit] = useState(20);
     const [hasMore, setHasMore] = useState(false);
+
+    // Page size constant
+    const PAGE_SIZE = 20;
 
     // Store current search params for pagination
     const searchParamsRef = useRef({
@@ -124,17 +126,26 @@ function Search({ isOpen, onClose, initialCategory }) {
             setLoadingMore(true);
         } else {
             setLoading(true);
+            // Reset products when starting a new search
+            if (!isLoadingMore) {
+                setProducts([]);
+            }
         }
         setError(null);
 
         try {
-            // Build query using the correct format from API spec
+            // Build query parameters
             const queryParams = {};
             if (searchQuery.trim()) queryParams.q = searchQuery.trim();
             if (categoryId) queryParams.category_id = categoryId;
             if (priceRange[0] > 0) queryParams.min_price = priceRange[0];
             if (priceRange[1] < 10000) queryParams.max_price = priceRange[1];
             if (status) queryParams.status = status;
+
+            // Add offset parameter for pagination
+            if (isLoadingMore) {
+                queryParams.offset = products.length;
+            }
 
             // Save current search params for pagination
             searchParamsRef.current = {
@@ -144,12 +155,10 @@ function Search({ isOpen, onClose, initialCategory }) {
                 status
             };
 
-            // Note: limit is a path parameter not a query parameter
-            const endpoint = `/products/search/${searchLimit}`;
+            const endpoint = `/products/search/${PAGE_SIZE}`;
 
             console.log("Search endpoint:", endpoint);
             console.log("Search parameters:", queryParams);
-            console.log("Using limit:", searchLimit);
 
             // Save recent search
             if (searchQuery.trim() && !recentSearches.includes(searchQuery.trim())) {
@@ -158,20 +167,17 @@ function Search({ isOpen, onClose, initialCategory }) {
                 localStorage.setItem('jcreations_recent_searches', JSON.stringify(updatedSearches));
             }
 
-            // Make the API request matching the API specification
+            // Make the API request
             const response = await api.get(endpoint, {
                 params: queryParams,
                 signal: abortControllerRef.current.signal
             });
-
-            console.log("API response:", response);
 
             if (isMounted.current) {
                 // The API returns an array of products
                 if (response.data && Array.isArray(response.data)) {
                     // Format each product to ensure consistent data structure
                     const formattedProducts = response.data.map(formatProductData).filter(Boolean);
-                    console.log("Formatted products:", formattedProducts);
 
                     if (isLoadingMore) {
                         // Append new products to existing list
@@ -182,7 +188,7 @@ function Search({ isOpen, onClose, initialCategory }) {
                     }
 
                     // Check if we received the maximum number of items, indicating there might be more
-                    setHasMore(formattedProducts.length >= 20);
+                    setHasMore(formattedProducts.length >= PAGE_SIZE);
                 } else {
                     console.error('Invalid response format:', response.data);
                     if (!isLoadingMore) {
@@ -209,38 +215,19 @@ function Search({ isOpen, onClose, initialCategory }) {
                 setLoadingMore(false);
             }
         }
-    }, [isOpen, searchQuery, categoryId, priceRange, status, searchLimit, recentSearches, formatProductData]);
+    }, [isOpen, searchQuery, categoryId, priceRange, status, recentSearches, formatProductData, products.length]);
 
-    // Handle load more button click
+    // Handle load more button click - simplified to directly call searchProducts
     const handleLoadMore = useCallback(() => {
-        console.log("Loading more items, increasing limit from", searchLimit);
-        setSearchLimit(prevLimit => prevLimit + 20);
-    }, [searchLimit]);
-
-    // Watch for changes to searchLimit to load more items
-    useEffect(() => {
-        if (!isOpen || loading) return;
-
-        // If this isn't the initial render (limit > 20) and we're not already loading
-        if (searchLimit > 20 && !loadingMore) {
-            console.log("SearchLimit changed to", searchLimit, "- loading more items");
+        if (hasMore && !loadingMore) {
+            console.log("Loading more items...");
             searchProducts(true);
         }
-    }, [searchLimit, isOpen, loading, loadingMore, searchProducts]);
+    }, [hasMore, loadingMore, searchProducts]);
 
     // Search when search parameters change (with debounce)
     useEffect(() => {
         if (!isOpen) return;
-
-        // Reset to initial limit when search params change
-        if (searchLimit > 20 &&
-            (searchParamsRef.current.query !== searchQuery.trim() ||
-                searchParamsRef.current.categoryId !== categoryId ||
-                searchParamsRef.current.status !== status ||
-                searchParamsRef.current.priceRange[0] !== priceRange[0] ||
-                searchParamsRef.current.priceRange[1] !== priceRange[1])) {
-            setSearchLimit(20);
-        }
 
         const timer = setTimeout(() => {
             searchProducts(false);
@@ -441,7 +428,7 @@ function Search({ isOpen, onClose, initialCategory }) {
                             </AnimatePresence>
                         </div>
 
-                        {/* Results section - Added pb-24 to create space for bottom navigation */}
+                        {/* Results section */}
                         <div className="flex-1 overflow-auto p-5 pb-24">
                             {/* Recent searches */}
                             {!searchQuery && recentSearches.length > 0 && (
@@ -474,12 +461,9 @@ function Search({ isOpen, onClose, initialCategory }) {
                                 <div>
                                     <h3 className="text-sm font-medium text-gray-500 mb-4">{products.length} Results Found</h3>
                                     <div className="grid grid-cols-1 gap-4">
-                                        {products.map((product, index) => {
-                                            console.log(`Rendering product ${index}:`, product);
-                                            return (
-                                                <SearchItem key={product.id || index} product={product} />
-                                            );
-                                        })}
+                                        {products.map((product, index) => (
+                                            <SearchItem key={product.id || index} product={product} />
+                                        ))}
                                     </div>
 
                                     {loadingMore ? (
