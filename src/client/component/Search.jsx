@@ -33,30 +33,34 @@ function Search({ isOpen, onClose, initialCategory }) {
     // Page size constant
     const PAGE_SIZE = 20;
 
-    // Store current search params for pagination
-    const searchParamsRef = useRef({
-        query: '',
-        categoryId: '',
-        priceRange: [0, 10000],
-        status: ''
+    // Reference to track current search state
+    const searchStateRef = useRef({
+        isSearching: false,
+        offset: 0,
+        searchParams: {
+            query: '',
+            categoryId: '',
+            priceRange: [0, 10000],
+            status: ''
+        }
     });
 
     // Reference to track if component is mounted
     const isMounted = useRef(true);
     const abortControllerRef = useRef(null);
+    const debounceTimerRef = useRef(null);
 
     // Set category ID when initialCategory prop changes or when search opens
     useEffect(() => {
         if (isOpen && initialCategory) {
             setCategoryId(initialCategory);
-            // Show filters panel when category is selected
             setShowFilters(true);
 
-            // Update search params and trigger search with the category
-            if (searchParamsRef.current.categoryId !== initialCategory) {
-                searchParamsRef.current.categoryId = initialCategory;
-                // Small delay to ensure state has updated
-                setTimeout(() => {
+            if (searchStateRef.current.searchParams.categoryId !== initialCategory) {
+                searchStateRef.current.searchParams.categoryId = initialCategory;
+                // Trigger search with slight delay to ensure state is updated
+                clearTimeout(debounceTimerRef.current);
+                debounceTimerRef.current = setTimeout(() => {
                     searchProducts(false);
                 }, 100);
             }
@@ -69,26 +73,23 @@ function Search({ isOpen, onClose, initialCategory }) {
 
         return {
             ...product,
-            // Ensure images is always an array
             images: Array.isArray(product.images) ? product.images :
                 (product.images ? [product.images] : []),
-            // Format price as a number
             price: typeof product.price === 'string' ? parseFloat(product.price) :
-                (product.price || 0), // Default to 0 if undefined
-            // Ensure discount_percentage exists and is a number
+                (product.price || 0),
             discount_percentage: parseFloat(product.discount_percentage || 0),
-            // Ensure status is a string
             status: product.status || "out_of_stock"
         };
     }, []);
 
-    // Reset mounted ref when component unmounts
+    // Cleanup on unmount
     useEffect(() => {
         return () => {
             isMounted.current = false;
             if (abortControllerRef.current) {
                 abortControllerRef.current.abort();
             }
+            clearTimeout(debounceTimerRef.current);
         };
     }, []);
 
@@ -112,25 +113,26 @@ function Search({ isOpen, onClose, initialCategory }) {
 
     // Search function
     const searchProducts = useCallback(async (isLoadingMore = false) => {
-        if (!isOpen) return;
+        if (!isOpen || searchStateRef.current.isSearching) return;
 
-        // Cancel previous request if it exists
+        // Cancel previous request
         if (abortControllerRef.current) {
             abortControllerRef.current.abort();
         }
-
-        // Create new abort controller
         abortControllerRef.current = new AbortController();
 
+        // Set appropriate loading state
         if (isLoadingMore) {
             setLoadingMore(true);
         } else {
             setLoading(true);
-            // Reset products when starting a new search
+            // Only reset products when starting a new search
             if (!isLoadingMore) {
                 setProducts([]);
             }
         }
+
+        searchStateRef.current.isSearching = true;
         setError(null);
 
         try {
@@ -145,10 +147,12 @@ function Search({ isOpen, onClose, initialCategory }) {
             // Add offset parameter for pagination
             if (isLoadingMore) {
                 queryParams.offset = products.length;
+            } else {
+                queryParams.offset = 0;
             }
 
-            // Save current search params for pagination
-            searchParamsRef.current = {
+            // Update search state reference
+            searchStateRef.current.searchParams = {
                 query: searchQuery.trim(),
                 categoryId,
                 priceRange: [...priceRange],
@@ -156,9 +160,7 @@ function Search({ isOpen, onClose, initialCategory }) {
             };
 
             const endpoint = `/products/search/${PAGE_SIZE}`;
-
-            console.log("Search endpoint:", endpoint);
-            console.log("Search parameters:", queryParams);
+            console.log("Search request:", endpoint, queryParams);
 
             // Save recent search
             if (searchQuery.trim() && !recentSearches.includes(searchQuery.trim())) {
@@ -167,16 +169,14 @@ function Search({ isOpen, onClose, initialCategory }) {
                 localStorage.setItem('jcreations_recent_searches', JSON.stringify(updatedSearches));
             }
 
-            // Make the API request
+            // Make API request
             const response = await api.get(endpoint, {
                 params: queryParams,
                 signal: abortControllerRef.current.signal
             });
 
             if (isMounted.current) {
-                // The API returns an array of products
                 if (response.data && Array.isArray(response.data)) {
-                    // Format each product to ensure consistent data structure
                     const formattedProducts = response.data.map(formatProductData).filter(Boolean);
 
                     if (isLoadingMore) {
@@ -187,7 +187,7 @@ function Search({ isOpen, onClose, initialCategory }) {
                         setProducts(formattedProducts);
                     }
 
-                    // Check if we received the maximum number of items, indicating there might be more
+                    // Check if we have more results
                     setHasMore(formattedProducts.length >= PAGE_SIZE);
                 } else {
                     console.error('Invalid response format:', response.data);
@@ -201,7 +201,6 @@ function Search({ isOpen, onClose, initialCategory }) {
         } catch (err) {
             if (err.name !== 'AbortError' && isMounted.current) {
                 console.error("Search error:", err);
-                console.error("Error details:", err.response?.data || err.message);
                 setError("Failed to search products. Please try again.");
                 toast.error("Search failed. Please check your connection.");
                 if (!isLoadingMore) {
@@ -213,27 +212,43 @@ function Search({ isOpen, onClose, initialCategory }) {
             if (isMounted.current) {
                 setLoading(false);
                 setLoadingMore(false);
+                searchStateRef.current.isSearching = false;
             }
         }
-    }, [isOpen, searchQuery, categoryId, priceRange, status, recentSearches, formatProductData, products.length]);
+    }, [isOpen, searchQuery, categoryId, priceRange, status, products.length, recentSearches, formatProductData]);
 
-    // Handle load more button click - simplified to directly call searchProducts
+    // Handle load more button click
     const handleLoadMore = useCallback(() => {
-        if (hasMore && !loadingMore) {
+        if (hasMore && !loadingMore && !loading) {
             console.log("Loading more items...");
             searchProducts(true);
         }
-    }, [hasMore, loadingMore, searchProducts]);
+    }, [hasMore, loadingMore, loading, searchProducts]);
 
-    // Search when search parameters change (with debounce)
+    // Debounced search when search parameters change
     useEffect(() => {
         if (!isOpen) return;
 
-        const timer = setTimeout(() => {
-            searchProducts(false);
+        // Clear previous debounce timer
+        clearTimeout(debounceTimerRef.current);
+
+        // Set a new timer
+        debounceTimerRef.current = setTimeout(() => {
+            // Check if search params actually changed
+            const currentParams = searchStateRef.current.searchParams;
+            const paramsChanged =
+                currentParams.query !== searchQuery.trim() ||
+                currentParams.categoryId !== categoryId ||
+                currentParams.status !== status ||
+                currentParams.priceRange[0] !== priceRange[0] ||
+                currentParams.priceRange[1] !== priceRange[1];
+
+            if (paramsChanged) {
+                searchProducts(false);
+            }
         }, 500);
 
-        return () => clearTimeout(timer);
+        return () => clearTimeout(debounceTimerRef.current);
     }, [searchProducts, isOpen, searchQuery, categoryId, status, priceRange]);
 
     // Focus search input when opened
@@ -249,6 +264,7 @@ function Search({ isOpen, onClose, initialCategory }) {
     // Handle form submission
     const handleSubmit = (e) => {
         e.preventDefault();
+        clearTimeout(debounceTimerRef.current);
         searchProducts(false);
     };
 
@@ -415,7 +431,10 @@ function Search({ isOpen, onClose, initialCategory }) {
                                             </motion.button>
                                             <motion.button
                                                 type="button"
-                                                onClick={() => searchProducts(false)}
+                                                onClick={() => {
+                                                    clearTimeout(debounceTimerRef.current);
+                                                    searchProducts(false);
+                                                }}
                                                 whileHover={{ scale: 1.03 }}
                                                 whileTap={{ scale: 0.97 }}
                                                 className="px-4 py-1.5 bg-[#F7A313] text-white rounded-full text-sm"
