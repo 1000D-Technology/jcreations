@@ -1,18 +1,20 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { IoMdClose } from 'react-icons/io';
+import { FiArrowLeft } from 'react-icons/fi';
 import api from "../../utils/axios.js";
 import { useNavigate, useParams } from 'react-router-dom';
 import SearchItem from "./utils/Searchitem.jsx";
 import { createPortal } from 'react-dom';
 import Categoryitem from "./utils/Categoryitem.jsx";
+import toast from 'react-hot-toast';
 
 function SearchByCategory({ isOpen, onClose, initialCategory }) {
     const navigate = useNavigate();
     const params = useParams();
     const categoryFromURL = params.category;
 
-    // Determine if we're in standalone page mode or modal mode
+    // Determine if standalone page or modal mode
     const isStandalonePage = !!categoryFromURL;
 
     // UI states
@@ -25,6 +27,7 @@ function SearchByCategory({ isOpen, onClose, initialCategory }) {
     const [products, setProducts] = useState([]);
     const [selectedCategory, setSelectedCategory] = useState(null);
     const [hasMore, setHasMore] = useState(false);
+    const [totalCount, setTotalCount] = useState(0);
 
     // Constants
     const PAGE_SIZE = 20;
@@ -32,27 +35,19 @@ function SearchByCategory({ isOpen, onClose, initialCategory }) {
     // References
     const isMounted = useRef(true);
     const abortControllerRef = useRef(null);
-    const searchStateRef = useRef({
-        isSearching: false,
-        currentCategoryId: null
-    });
+    const fetchingRef = useRef(false);
 
-    // Set effective category ID based on URL or prop
+    // Set category ID based on URL or prop
     useEffect(() => {
         const effectiveId = categoryFromURL || initialCategory;
         if (effectiveId && effectiveId !== categoryId) {
             setCategoryId(effectiveId);
-            // Reset products when category changes
             setProducts([]);
+            setHasMore(false);
         }
     }, [categoryFromURL, initialCategory, categoryId]);
 
-    // Handle back button click
-    const handleBack = () => {
-        navigate('/');
-    };
-
-    // Format product data for consistency
+    // Format product data
     const formatProductData = useCallback((product) => {
         if (!product) return null;
 
@@ -88,84 +83,100 @@ function SearchByCategory({ isOpen, onClose, initialCategory }) {
             }
         } catch (err) {
             console.error("Error fetching category details:", err);
+            if (err.response?.status === 404) {
+                setError("Category not found");
+                toast.error("Category not found");
+            }
         }
     }, []);
 
-    // Search products function with pagination support
+    // Search products function
     const searchProducts = useCallback(async (isLoadingMore = false) => {
-        // Don't search if already searching or if component is not active
-        if (searchStateRef.current.isSearching || (!isOpen && !isStandalonePage)) return;
-        if (!categoryId) return;
+        // Prevent concurrent requests
+        if (fetchingRef.current) return;
+        if (!categoryId || (!isOpen && !isStandalonePage)) return;
 
         // Cancel previous request if exists
         if (abortControllerRef.current) {
             abortControllerRef.current.abort();
         }
 
-        // Create new abort controller
+        // Set new abort controller
         abortControllerRef.current = new AbortController();
-        searchStateRef.current.isSearching = true;
+        fetchingRef.current = true;
 
         // Set loading state
         if (isLoadingMore) {
             setLoadingMore(true);
         } else {
             setLoading(true);
-            // Only reset products for new searches, not loading more
             if (!isLoadingMore) {
                 setProducts([]);
             }
         }
+
         setError(null);
 
         try {
             // Build query parameters
             const queryParams = {
-                category_id: categoryId
+                category_id: categoryId,
+                limit: PAGE_SIZE,
+                offset: isLoadingMore ? products.length : 0
             };
 
-            // Add pagination
-            if (isLoadingMore) {
-                queryParams.offset = products.length;
-            }
-            queryParams.limit = PAGE_SIZE;
-
-            console.log("Searching products for category:", categoryId);
+            console.log(`Fetching products for category: ${categoryId}`);
             console.log("Query params:", queryParams);
 
-            // Make API request
             const response = await api.get('/products/search', {
                 params: queryParams,
                 signal: abortControllerRef.current.signal
             });
 
             if (isMounted.current) {
-                if (response.data && Array.isArray(response.data)) {
-                    const formattedProducts = response.data.map(formatProductData).filter(Boolean);
+                if (response.data) {
+                    // Handle different API response formats
+                    let productsData = response.data;
+                    let totalItems = 0;
 
-                    // Update products array (append or replace)
+                    // If response includes metadata like total count
+                    if (response.headers['x-total-count']) {
+                        totalItems = parseInt(response.headers['x-total-count'], 10);
+                        setTotalCount(totalItems);
+                    } else {
+                        // Estimate based on current results
+                        setTotalCount(isLoadingMore ? products.length + productsData.length : productsData.length);
+                    }
+
+                    // Ensure we have an array of products
+                    if (!Array.isArray(productsData)) {
+                        console.error('Invalid response format:', response.data);
+                        productsData = [];
+                    }
+
+                    const formattedProducts = productsData.map(formatProductData).filter(Boolean);
+
                     if (isLoadingMore) {
                         setProducts(prev => [...prev, ...formattedProducts]);
                     } else {
                         setProducts(formattedProducts);
                     }
 
-                    // Check if there might be more products
+                    // Determine if more products are available
                     setHasMore(formattedProducts.length >= PAGE_SIZE);
                 } else {
-                    console.error('Invalid response format:', response.data);
+                    console.error('Invalid response format:', response);
                     if (!isLoadingMore) {
                         setProducts([]);
                     }
                     setHasMore(false);
-                    setError("Invalid response format from server");
+                    setError("Invalid response from server");
                 }
             }
         } catch (err) {
             if (err.name !== 'AbortError' && isMounted.current) {
                 console.error("Search error:", err);
-                console.error("Error details:", err.response?.data || err.message);
-                setError("Failed to search products. Please try again.");
+                setError("Failed to load products. Please try again.");
                 if (!isLoadingMore) {
                     setProducts([]);
                 }
@@ -175,7 +186,7 @@ function SearchByCategory({ isOpen, onClose, initialCategory }) {
             if (isMounted.current) {
                 setLoading(false);
                 setLoadingMore(false);
-                searchStateRef.current.isSearching = false;
+                fetchingRef.current = false;
             }
         }
     }, [categoryId, isOpen, isStandalonePage, formatProductData, products.length]);
@@ -183,24 +194,27 @@ function SearchByCategory({ isOpen, onClose, initialCategory }) {
     // Handle load more button click
     const handleLoadMore = useCallback(() => {
         if (hasMore && !loadingMore && !loading) {
-            console.log("Loading more items...");
             searchProducts(true);
         }
     }, [hasMore, loadingMore, loading, searchProducts]);
 
-    // Trigger search and fetch category details when categoryId changes
+    // Navigate back
+    const handleBack = useCallback(() => {
+        navigate('/');
+    }, [navigate]);
+
+    // Load products when category changes
     useEffect(() => {
         if (categoryId && (isOpen || isStandalonePage)) {
-            console.log("Category changed, loading products for:", categoryId);
             searchProducts(false);
             fetchCategoryDetails(categoryId);
         }
     }, [categoryId, isOpen, isStandalonePage, searchProducts, fetchCategoryDetails]);
 
-    // Render content for both modal and standalone page
+    // Render content
     const renderContent = () => (
         <div className="max-w-7xl w-full flex flex-col">
-            {/* Fixed container for categories in standalone mode */}
+            {/* Categories bar for mobile in standalone mode */}
             {isStandalonePage && (
                 <div className="fixed left-0 right-0 z-40 bg-white py-3 md:hidden">
                     <Categoryitem />
@@ -210,42 +224,42 @@ function SearchByCategory({ isOpen, onClose, initialCategory }) {
             {/* Header */}
             <div className="flex justify-between items-center p-5 border-b sticky top-0 bg-white z-10 mt-20 md:mt-0">
                 {isStandalonePage && (
-                    <button onClick={handleBack} className="p-2">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M19 12H5" stroke="#333" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                            <path d="M12 19L5 12L12 5" stroke="#333" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
+                    <button
+                        onClick={handleBack}
+                        className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+                    >
+                        <FiArrowLeft className="text-xl" />
                     </button>
                 )}
 
                 <h2 className="text-xl font-medium">
-                    {selectedCategory ? selectedCategory.name : 'Browse Categories'}
+                    {selectedCategory ? selectedCategory.name : 'Loading category...'}
                 </h2>
 
                 {!isStandalonePage && (
-                    <button
+                    <motion.button
                         onClick={onClose}
+                        whileHover={{ scale: 1.1 }}
+                        whileTap={{ scale: 0.95 }}
                         className="p-2 rounded-full hover:bg-gray-100"
                     >
-                        <IoMdClose className="text-xl"/>
-                    </button>
+                        <IoMdClose className="text-xl" />
+                    </motion.button>
                 )}
 
-                {isStandalonePage && <div className="w-10"></div>} {/* Spacer for alignment */}
+                {isStandalonePage && <div className="w-10"></div>}
             </div>
 
             {/* Category description */}
             {selectedCategory && selectedCategory.description && (
-                <div className="p-5 border-b sticky top-16 bg-white z-10">
-                    <div className="text-gray-600">
-                        {selectedCategory.description}
-                    </div>
+                <div className="p-5 border-b bg-white">
+                    <p className="text-gray-600">{selectedCategory.description}</p>
                 </div>
             )}
 
             {/* Results section */}
             <div className="flex-1 overflow-auto p-5 pb-24">
-                {/* Loading state */}
+                {/* Loading indicator */}
                 {loading && !loadingMore && (
                     <div className="flex flex-col items-center justify-center py-10">
                         <div className="w-12 h-12 border-4 border-[#F7A313] border-t-transparent rounded-full animate-spin"></div>
@@ -256,13 +270,15 @@ function SearchByCategory({ isOpen, onClose, initialCategory }) {
                 {/* Error state */}
                 {error && !loading && products.length === 0 && (
                     <div className="text-center py-10">
-                        <p className="text-red-500">{error}</p>
-                        <button
+                        <p className="text-red-500 mb-4">{error}</p>
+                        <motion.button
                             onClick={() => searchProducts(false)}
-                            className="mt-4 px-4 py-2 bg-gray-100 rounded-full text-gray-700 hover:bg-gray-200"
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            className="px-4 py-2 bg-gray-100 rounded-full text-gray-700 hover:bg-gray-200"
                         >
                             Try Again
-                        </button>
+                        </motion.button>
                     </div>
                 )}
 
@@ -276,14 +292,17 @@ function SearchByCategory({ isOpen, onClose, initialCategory }) {
                 {/* Products grid */}
                 {products.length > 0 && (
                     <div>
-                        <h3 className="text-sm font-medium text-gray-500 mb-4">{products.length} Results Found</h3>
+                        <h3 className="text-sm font-medium text-gray-500 mb-4">
+                            {totalCount > 0 ? `Showing ${products.length} of ${totalCount} products` : `${products.length} products found`}
+                        </h3>
+
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {products.map((product, index) => (
                                 <SearchItem key={product.id || index} product={product} />
                             ))}
                         </div>
 
-                        {/* Load more button */}
+                        {/* Load more */}
                         {loadingMore ? (
                             <div className="flex justify-center mt-6">
                                 <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-[#F7A313]"></div>
@@ -306,7 +325,7 @@ function SearchByCategory({ isOpen, onClose, initialCategory }) {
         </div>
     );
 
-    // Render differently based on whether this is a modal or standalone page
+    // Render component based on mode
     if (isStandalonePage) {
         return (
             <div className="fixed inset-0 bg-white z-50 flex justify-center overflow-auto">
