@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { IoMdClose } from 'react-icons/io';
 import { FiArrowLeft } from 'react-icons/fi';
 import api from "../../utils/axios.js";
@@ -41,6 +42,7 @@ function SearchByCategory({ isOpen, onClose, initialCategory }) {
     useEffect(() => {
         const effectiveId = categoryFromURL || initialCategory;
         if (effectiveId && effectiveId !== categoryId) {
+            console.log(`Setting category ID to: ${effectiveId}`);
             setCategoryId(effectiveId);
             setProducts([]);
             setHasMore(false);
@@ -77,8 +79,10 @@ function SearchByCategory({ isOpen, onClose, initialCategory }) {
         if (!id) return;
 
         try {
+            console.log(`Fetching details for category ID: ${id}`);
             const response = await api.get(`/categories/${id}`);
             if (response.data && isMounted.current) {
+                console.log("Category details:", response.data);
                 setSelectedCategory(response.data);
             }
         } catch (err) {
@@ -93,8 +97,20 @@ function SearchByCategory({ isOpen, onClose, initialCategory }) {
     // Search products function
     const searchProducts = useCallback(async (isLoadingMore = false) => {
         // Prevent concurrent requests
-        if (fetchingRef.current) return;
-        if (!categoryId || (!isOpen && !isStandalonePage)) return;
+        if (fetchingRef.current) {
+            console.log("Request already in progress, skipping");
+            return;
+        }
+
+        if (!categoryId) {
+            console.log("No category ID, skipping search");
+            return;
+        }
+
+        if (!isOpen && !isStandalonePage) {
+            console.log("Component not active, skipping search");
+            return;
+        }
 
         // Cancel previous request if exists
         if (abortControllerRef.current) {
@@ -121,61 +137,69 @@ function SearchByCategory({ isOpen, onClose, initialCategory }) {
             // Build query parameters
             const queryParams = {
                 category_id: categoryId,
-                limit: PAGE_SIZE,
-                offset: isLoadingMore ? products.length : 0
+                limit: PAGE_SIZE
             };
+
+            // Add offset for pagination
+            if (isLoadingMore) {
+                queryParams.offset = products.length;
+            }
 
             console.log(`Fetching products for category: ${categoryId}`);
             console.log("Query params:", queryParams);
 
+            // Make API request - ensure this endpoint matches your backend
             const response = await api.get('/products/search', {
                 params: queryParams,
                 signal: abortControllerRef.current.signal
             });
 
-            if (isMounted.current) {
-                if (response.data) {
-                    // Handle different API response formats
-                    let productsData = response.data;
-                    let totalItems = 0;
+            if (!isMounted.current) return;
 
-                    // If response includes metadata like total count
-                    if (response.headers['x-total-count']) {
-                        totalItems = parseInt(response.headers['x-total-count'], 10);
-                        setTotalCount(totalItems);
-                    } else {
-                        // Estimate based on current results
-                        setTotalCount(isLoadingMore ? products.length + productsData.length : productsData.length);
-                    }
+            if (response.data) {
+                // Handle different API response formats
+                let productsData = response.data;
 
-                    // Ensure we have an array of products
-                    if (!Array.isArray(productsData)) {
-                        console.error('Invalid response format:', response.data);
-                        productsData = [];
-                    }
-
-                    const formattedProducts = productsData.map(formatProductData).filter(Boolean);
-
-                    if (isLoadingMore) {
-                        setProducts(prev => [...prev, ...formattedProducts]);
-                    } else {
-                        setProducts(formattedProducts);
-                    }
-
-                    // Determine if more products are available
-                    setHasMore(formattedProducts.length >= PAGE_SIZE);
-                } else {
-                    console.error('Invalid response format:', response);
-                    if (!isLoadingMore) {
-                        setProducts([]);
-                    }
-                    setHasMore(false);
-                    setError("Invalid response from server");
+                // Ensure we have an array of products
+                if (!Array.isArray(productsData)) {
+                    console.error('Invalid response format:', response.data);
+                    productsData = [];
                 }
+
+                console.log(`Received ${productsData.length} products`);
+
+                // Update total count from headers or estimate
+                if (response.headers['x-total-count']) {
+                    const totalItems = parseInt(response.headers['x-total-count'], 10);
+                    setTotalCount(totalItems);
+                    console.log(`Total products count: ${totalItems}`);
+                } else {
+                    setTotalCount(isLoadingMore ? products.length + productsData.length : productsData.length);
+                }
+
+                const formattedProducts = productsData.map(formatProductData).filter(Boolean);
+
+                if (isLoadingMore) {
+                    setProducts(prev => [...prev, ...formattedProducts]);
+                } else {
+                    setProducts(formattedProducts);
+                }
+
+                // Determine if more products are available
+                setHasMore(formattedProducts.length >= PAGE_SIZE);
+                console.log(`Has more products: ${formattedProducts.length >= PAGE_SIZE}`);
+            } else {
+                console.error('Invalid response format:', response);
+                if (!isLoadingMore) {
+                    setProducts([]);
+                }
+                setHasMore(false);
+                setError("Invalid response from server");
             }
         } catch (err) {
             if (err.name !== 'AbortError' && isMounted.current) {
                 console.error("Search error:", err);
+                console.error("Error details:", err.response?.data || err.message);
                 setError("Failed to load products. Please try again.");
                 if (!isLoadingMore) {
                     setProducts([]);
@@ -193,7 +217,8 @@ function SearchByCategory({ isOpen, onClose, initialCategory }) {
 
     // Handle load more button click
     const handleLoadMore = useCallback(() => {
-        if (hasMore && !loadingMore && !loading) {
+        if (hasMore && !loadingMore && !loading && !fetchingRef.current) {
+            console.log("Loading more products...");
             searchProducts(true);
         }
     }, [hasMore, loadingMore, loading, searchProducts]);
@@ -206,8 +231,14 @@ function SearchByCategory({ isOpen, onClose, initialCategory }) {
     // Load products when category changes
     useEffect(() => {
         if (categoryId && (isOpen || isStandalonePage)) {
-            searchProducts(false);
-            fetchCategoryDetails(categoryId);
+            console.log(`Category changed to ${categoryId}, fetching data...`);
+            // Fetch products with a short delay to ensure state is updated
+            const timer = setTimeout(() => {
+                searchProducts(false);
+                fetchCategoryDetails(categoryId);
+            }, 50);
+
+            return () => clearTimeout(timer);
         }
     }, [categoryId, isOpen, isStandalonePage, searchProducts, fetchCategoryDetails]);
 
