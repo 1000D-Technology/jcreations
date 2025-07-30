@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import { IoMdClose } from 'react-icons/io';
 import { FiArrowLeft } from 'react-icons/fi';
 import api from "../../utils/axios.js";
@@ -7,7 +7,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import SearchItem from "./utils/Searchitem.jsx";
 import { createPortal } from 'react-dom';
 import Categoryitem from "./utils/Categoryitem.jsx";
-import toast from 'react-hot-toast';
+// Remove toast if not using it
+// import toast from 'react-hot-toast';
 
 function SearchByCategory({ isOpen, onClose, initialCategory }) {
     const navigate = useNavigate();
@@ -82,6 +83,7 @@ function SearchByCategory({ isOpen, onClose, initialCategory }) {
             }
         } catch (err) {
             console.error("Error fetching category details:", err);
+            setError("Failed to load category details.");
         }
     }, []);
 
@@ -126,6 +128,8 @@ function SearchByCategory({ isOpen, onClose, initialCategory }) {
                 queryParams.offset = products.length;
             }
 
+            console.log(`Fetching products for category: ${categoryId}`);
+
             const response = await api.get(endpoint, {
                 params: queryParams,
                 signal: abortControllerRef.current.signal
@@ -148,6 +152,7 @@ function SearchByCategory({ isOpen, onClose, initialCategory }) {
                         setProducts([]);
                     }
                     setHasMore(false);
+                    setError("Invalid response from server");
                 }
             }
         } catch (err) {
@@ -269,7 +274,7 @@ function SearchByCategory({ isOpen, onClose, initialCategory }) {
                             {products.length} products found
                         </h3>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                             {products.map((product, index) => (
                                 <SearchItem key={product.id || index} product={product} />
                             ))}
