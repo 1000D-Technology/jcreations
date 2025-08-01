@@ -34,34 +34,6 @@ function SearchByCategory({ isOpen, onClose, initialCategory }) {
         navigate('/');
     };
 
-    // Initialize category search when component mounts or category changes
-    useEffect(() => {
-        if ((isOpen || isStandalonePage) && effectiveCategoryId) {
-            setCategoryId(effectiveCategoryId);
-
-            // Load products for this category
-            setLoading(true);
-            searchProducts(effectiveCategoryId);
-
-            // Fetch category details
-            fetchCategoryDetails(effectiveCategoryId);
-        }
-    }, [isOpen, effectiveCategoryId, isStandalonePage]);
-
-    // Fetch category details
-    const fetchCategoryDetails = async (id) => {
-        if (!id) return;
-
-        try {
-            const response = await api.get(`/categories/${id}`);
-            if (response.data) {
-                setSelectedCategory(response.data);
-            }
-        } catch (err) {
-            console.error("Error fetching category details:", err);
-        }
-    };
-
     // Format product data
     const formatProductData = useCallback((product) => {
         if (!product) return null;
@@ -74,16 +46,6 @@ function SearchByCategory({ isOpen, onClose, initialCategory }) {
                 (product.price || 0),
             discount_percentage: parseFloat(product.discount_percentage || 0),
             status: product.status || "out_of_stock"
-        };
-    }, []);
-
-    // Cleanup on unmount
-    useEffect(() => {
-        return () => {
-            isMounted.current = false;
-            if (abortControllerRef.current) {
-                abortControllerRef.current.abort();
-            }
         };
     }, []);
 
@@ -103,24 +65,51 @@ function SearchByCategory({ isOpen, onClose, initialCategory }) {
         try {
             // Build query params
             const queryParams = {};
+            const limit = 12;
+            const categoryIdToUse = forcedCategoryId || categoryId || params.category;
+            
+            console.log('Search params debug:', {
+                forcedCategoryId,
+                categoryId,
+                paramsCategory: params.category,
+                categoryIdToUse,
+                isOpen,
+                isStandalonePage
+            });
+            
+            if (categoryIdToUse) {
+                queryParams.category_id = categoryIdToUse;
+            }
+            
+            const endpoint = `/products/search/${limit}`;
 
-            // Use forcedCategoryId if provided, otherwise use categoryId state
-            const effectiveCategoryId = forcedCategoryId || categoryId;
-            if (effectiveCategoryId) queryParams.category_id = effectiveCategoryId;
+            console.log('Making API call to:', endpoint, 'with params:', queryParams);
 
-            const endpoint = `/products/search/`; // Get up to 50 products at once
-
-            // API request
             const response = await api.get(endpoint, {
                 params: queryParams,
                 signal: abortControllerRef.current.signal
             });
+            
+            console.log('Product search response:', response);
+            console.log('Response data:', response.data);
+            console.log('isMounted.current:', isMounted.current);
 
             if (isMounted.current) {
+                console.log('Inside isMounted check - processing data');
                 if (response.data && Array.isArray(response.data)) {
-                    const formattedProducts = response.data.map(formatProductData).filter(Boolean);
+                    console.log('Raw response data before formatting:', response.data);
+                    const formattedProducts = response.data.map((product, index) => {
+                        console.log(`Formatting product ${index}:`, product);
+                        const formatted = formatProductData(product);
+                        console.log(`Formatted result ${index}:`, formatted);
+                        return formatted;
+                    }).filter(Boolean);
+                    console.log('Formatted products after filter:', formattedProducts);
+                    console.log('Setting products state with:', formattedProducts);
                     setProducts(formattedProducts);
+                    console.log('Products state set successfully');
                 } else {
+                    console.log('Invalid response format:', response.data);
                     setProducts([]);
                     setError("Invalid response format from server");
                 }
@@ -128,18 +117,70 @@ function SearchByCategory({ isOpen, onClose, initialCategory }) {
         } catch (err) {
             if (err.name !== 'AbortError' && isMounted.current) {
                 console.error("Search error:", err);
-                setError("Failed to search products. Please try again.");
+                console.error("Error details:", err.response?.data);
+                // setError("Failed to search products. Please try again.");
                 setProducts([]);
             }
         } finally {
+            console.log('In finally block, isMounted.current:', isMounted.current);
             if (isMounted.current) {
+                console.log('Setting loading to false');
                 setLoading(false);
+            } else {
+                console.log('Component unmounted, not setting loading state');
             }
         }
-    }, [isOpen, isStandalonePage, categoryId, formatProductData]);
+    }, [isOpen, isStandalonePage, formatProductData]); // Removed categoryId and params.category as they're accessed directly
+
+    // Initialize category search when component mounts or category changes
+    useEffect(() => {
+        if ((isOpen || isStandalonePage) && effectiveCategoryId) {
+            setCategoryId(effectiveCategoryId);
+
+            // Load products for this category
+            searchProducts(effectiveCategoryId);
+
+            // Fetch category details
+            fetchCategoryDetails(effectiveCategoryId);
+        }
+    }, [isOpen, effectiveCategoryId, isStandalonePage]); // Removed searchProducts from dependencies
+
+    // Fetch category details
+    const fetchCategoryDetails = async (id) => {
+        if (!id) return;
+
+        try {
+            const response = await api.get(`/categories/${id}`);
+            if (response.data) {
+                setSelectedCategory(response.data);
+            }
+        } catch (err) {
+            console.error("Error fetching category details:", err);
+        }
+    };
+
+    // Cleanup on unmount
+    useEffect(() => {
+        isMounted.current = true; // Ensure it's set to true on mount
+        return () => {
+            console.log('Component unmounting, setting isMounted to false');
+            isMounted.current = false;
+            if (abortControllerRef.current) {
+                abortControllerRef.current.abort();
+            }
+        };
+    }, []);
 
     // Render content for both modal and standalone page
-    const renderContent = () => (
+    const renderContent = () => {
+        console.log('Rendering SearchByCategory with state:', {
+            loading,
+            error,
+            productsLength: products.length,
+            products: products
+        });
+        
+        return (
         <div className="max-w-7xl w-full flex flex-col">
             {/* Fixed container for categories in standalone mode */}
             {isStandalonePage && (
@@ -227,7 +268,8 @@ function SearchByCategory({ isOpen, onClose, initialCategory }) {
                 )}
             </div>
         </div>
-    );
+        );
+    };
 
     // Render differently based on whether this is a modal or standalone page
     if (isStandalonePage) {
