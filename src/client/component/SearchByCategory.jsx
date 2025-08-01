@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { IoMdClose } from 'react-icons/io';
+import { FiArrowLeft } from 'react-icons/fi';
 import api from "../../utils/axios.js";
 import { useNavigate, useParams } from 'react-router-dom';
 import SearchItem from "./utils/Searchitem.jsx";
@@ -12,55 +13,39 @@ function SearchByCategory({ isOpen, onClose, initialCategory }) {
     const params = useParams();
     const categoryFromURL = params.category;
 
-    // Determine if we're in standalone page mode or modal mode
+    // Determine if standalone page or modal mode
     const isStandalonePage = !!categoryFromURL;
-    const effectiveCategoryId = categoryFromURL || initialCategory;
 
     // UI states
     const [loading, setLoading] = useState(false);
+    const [loadingMore, setLoadingMore] = useState(false);
     const [error, setError] = useState(null);
 
-    // Filter states
+    // Data states
     const [categoryId, setCategoryId] = useState('');
     const [products, setProducts] = useState([]);
     const [selectedCategory, setSelectedCategory] = useState(null);
+    const [hasMore, setHasMore] = useState(false);
+
+    // Constants
+    const PAGE_SIZE = 20;
 
     // References
     const isMounted = useRef(true);
     const abortControllerRef = useRef(null);
+    const isSearchingRef = useRef(false);
+    const offset = useRef(0);
 
-    // Navigate to home page when back button is clicked
-    const handleBack = () => {
-        navigate('/');
-    };
-
-    // Initialize category search when component mounts or category changes
+    // Set category ID from URL or props
     useEffect(() => {
-        if ((isOpen || isStandalonePage) && effectiveCategoryId) {
-            setCategoryId(effectiveCategoryId);
-
-            // Load products for this category
-            setLoading(true);
-            searchProducts(effectiveCategoryId);
-
-            // Fetch category details
-            fetchCategoryDetails(effectiveCategoryId);
+        const effectiveId = categoryFromURL || initialCategory;
+        if (effectiveId && effectiveId !== categoryId) {
+            setCategoryId(effectiveId);
+            setProducts([]);
+            offset.current = 0;
+            setHasMore(false);
         }
-    }, [isOpen, effectiveCategoryId, isStandalonePage]);
-
-    // Fetch category details
-    const fetchCategoryDetails = async (id) => {
-        if (!id) return;
-
-        try {
-            const response = await api.get(`/categories/${id}`);
-            if (response.data) {
-                setSelectedCategory(response.data);
-            }
-        } catch (err) {
-            console.error("Error fetching category details:", err);
-        }
-    };
+    }, [categoryFromURL, initialCategory, categoryId]);
 
     // Format product data
     const formatProductData = useCallback((product) => {
@@ -87,30 +72,62 @@ function SearchByCategory({ isOpen, onClose, initialCategory }) {
         };
     }, []);
 
-    // Search products function
-    const searchProducts = useCallback(async (forcedCategoryId = null) => {
-        if (!isOpen && !isStandalonePage) return;
+    // Fetch category details
+    const fetchCategoryDetails = useCallback(async (id) => {
+        if (!id) return;
 
-        // Cancel previous request
+        try {
+            const response = await api.get(`/categories/${id}`);
+            if (response.data && isMounted.current) {
+                setSelectedCategory(response.data);
+            }
+        } catch (err) {
+            console.error("Error fetching category details:", err);
+        }
+    }, []);
+
+    // Search products function
+    const searchProducts = useCallback(async (isLoadingMore = false) => {
+        // Prevent concurrent requests
+        if (isSearchingRef.current) return;
+        if (!categoryId || (!isOpen && !isStandalonePage)) return;
+
+        // Cancel previous request if exists
         if (abortControllerRef.current) {
             abortControllerRef.current.abort();
         }
 
+        // Set new abort controller
         abortControllerRef.current = new AbortController();
-        setLoading(true);
+        isSearchingRef.current = true;
+
+        // Set loading state
+        if (isLoadingMore) {
+            setLoadingMore(true);
+        } else {
+            setLoading(true);
+            if (!isLoadingMore) {
+                setProducts([]);
+                offset.current = 0;
+            }
+        }
+
         setError(null);
 
         try {
-            // Build query params
-            const queryParams = {};
+            // Build query parameters
+            const queryParams = {
+                category_id: categoryId
+            };
 
-            // Use forcedCategoryId if provided, otherwise use categoryId state
-            const effectiveCategoryId = forcedCategoryId || categoryId;
-            if (effectiveCategoryId) queryParams.category_id = effectiveCategoryId;
+            // Add offset for pagination
+            if (isLoadingMore && offset.current > 0) {
+                queryParams.offset = offset.current;
+            }
 
-            const endpoint = `/products/search/`; // Get up to 50 products at once
+            // Use the correct API endpoint with limit as path parameter
+            const endpoint = `/products/search/${PAGE_SIZE}`;
 
-            // API request
             const response = await api.get(endpoint, {
                 params: queryParams,
                 signal: abortControllerRef.current.signal
@@ -119,29 +136,71 @@ function SearchByCategory({ isOpen, onClose, initialCategory }) {
             if (isMounted.current) {
                 if (response.data && Array.isArray(response.data)) {
                     const formattedProducts = response.data.map(formatProductData).filter(Boolean);
-                    setProducts(formattedProducts);
+
+                    if (isLoadingMore) {
+                        // Append new products to existing list
+                        setProducts(prev => [...prev, ...formattedProducts]);
+                    } else {
+                        // Replace products with new results
+                        setProducts(formattedProducts);
+                    }
+
+                    // Update offset for next page
+                    offset.current += formattedProducts.length;
+
+                    // Determine if more products are available
+                    setHasMore(formattedProducts.length >= PAGE_SIZE);
                 } else {
-                    setProducts([]);
+                    console.error('Invalid response format:', response.data);
+                    if (!isLoadingMore) {
+                        setProducts([]);
+                    }
+                    setHasMore(false);
                     setError("Invalid response format from server");
                 }
             }
         } catch (err) {
             if (err.name !== 'AbortError' && isMounted.current) {
                 console.error("Search error:", err);
-                setError("Failed to search products. Please try again.");
-                setProducts([]);
+                setError("Failed to load products. Please try again.");
+                if (!isLoadingMore) {
+                    setProducts([]);
+                }
+                setHasMore(false);
             }
         } finally {
             if (isMounted.current) {
                 setLoading(false);
+                setLoadingMore(false);
+                isSearchingRef.current = false;
             }
         }
-    }, [isOpen, isStandalonePage, categoryId, formatProductData]);
+    }, [categoryId, isOpen, isStandalonePage, formatProductData]);
 
-    // Render content for both modal and standalone page
+    // Handle load more button click
+    const handleLoadMore = useCallback(() => {
+        if (hasMore && !loadingMore && !loading) {
+            searchProducts(true);
+        }
+    }, [hasMore, loadingMore, loading, searchProducts]);
+
+    // Navigate back
+    const handleBack = useCallback(() => {
+        navigate('/');
+    }, [navigate]);
+
+    // Load products when category changes
+    useEffect(() => {
+        if (categoryId && (isOpen || isStandalonePage)) {
+            searchProducts(false);
+            fetchCategoryDetails(categoryId);
+        }
+    }, [categoryId, isOpen, isStandalonePage, searchProducts, fetchCategoryDetails]);
+
+    // Render content
     const renderContent = () => (
         <div className="max-w-7xl w-full flex flex-col">
-            {/* Fixed container for categories in standalone mode */}
+            {/* Categories bar for mobile in standalone mode */}
             {isStandalonePage && (
                 <div className="fixed left-0 right-0 z-40 bg-white py-3 md:hidden">
                     <Categoryitem />
@@ -149,18 +208,18 @@ function SearchByCategory({ isOpen, onClose, initialCategory }) {
             )}
 
             {/* Header */}
-            <div className="flex justify-between items-center p-5 border-b sticky bg-white z-10 mt-20 md:mt-0">
+            <div className="flex justify-between items-center p-5 border-b sticky top-0 bg-white z-10 mt-20 md:mt-0">
                 {isStandalonePage && (
-                    <button onClick={handleBack} className="p-2">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M19 12H5" stroke="#333" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                            <path d="M12 19L5 12L12 5" stroke="#333" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
+                    <button
+                        onClick={handleBack}
+                        className="p-2 rounded-full hover:bg-gray-100"
+                    >
+                        <FiArrowLeft className="text-xl" />
                     </button>
                 )}
 
                 <h2 className="text-xl font-medium">
-                    {selectedCategory ? selectedCategory.name : 'Browse Categories'}
+                    {selectedCategory ? selectedCategory.name : 'Loading category...'}
                 </h2>
 
                 {!isStandalonePage && (
@@ -172,22 +231,20 @@ function SearchByCategory({ isOpen, onClose, initialCategory }) {
                     </button>
                 )}
 
-                {isStandalonePage && <div className="w-10"></div>} {/* Spacer for alignment */}
+                {isStandalonePage && <div className="w-10"></div>}
             </div>
 
             {/* Category description */}
-            <div className="p-5 sticky top-16 bg-white z-10">
-                {selectedCategory && selectedCategory.description && (
-                    <div className="mb-4 text-gray-600">
-                        {selectedCategory.description}
-                    </div>
-                )}
-            </div>
+            {selectedCategory && selectedCategory.description && (
+                <div className="p-5 border-b bg-white">
+                    <p className="text-gray-600">{selectedCategory.description}</p>
+                </div>
+            )}
 
             {/* Results section */}
             <div className="flex-1 overflow-auto p-5 pb-24">
-                {/* Loading state */}
-                {loading && (
+                {/* Loading indicator */}
+                {loading && !loadingMore && (
                     <div className="flex flex-col items-center justify-center py-10">
                         <div className="w-12 h-12 border-4 border-[#F7A313] border-t-transparent rounded-full animate-spin"></div>
                         <p className="mt-4 text-gray-600">Loading products...</p>
@@ -197,10 +254,10 @@ function SearchByCategory({ isOpen, onClose, initialCategory }) {
                 {/* Error state */}
                 {error && !loading && products.length === 0 && (
                     <div className="text-center py-10">
-                        <p className="text-red-500">{error}</p>
+                        <p className="text-red-500 mb-4">{error}</p>
                         <button
-                            onClick={() => searchProducts()}
-                            className="mt-4 px-4 py-2 bg-gray-100 rounded-full text-gray-700 hover:bg-gray-200"
+                            onClick={() => searchProducts(false)}
+                            className="px-4 py-2 bg-gray-100 rounded-full text-gray-700 hover:bg-gray-200"
                         >
                             Try Again
                         </button>
@@ -215,21 +272,42 @@ function SearchByCategory({ isOpen, onClose, initialCategory }) {
                 )}
 
                 {/* Products grid */}
-                {!loading && products.length > 0 && (
+                {products.length > 0 && (
                     <div>
-                        <h3 className="text-sm font-medium text-gray-500 mb-4">{products.length} Results Found</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <h3 className="text-sm font-medium text-gray-500 mb-4">
+                            {products.length} products found
+                        </h3>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                             {products.map((product, index) => (
                                 <SearchItem key={product.id || index} product={product} />
                             ))}
                         </div>
+
+                        {/* Load more section */}
+                        {loadingMore ? (
+                            <div className="flex justify-center mt-6">
+                                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-[#F7A313]"></div>
+                            </div>
+                        ) : hasMore && (
+                            <div className="flex justify-center mt-6">
+                                <motion.button
+                                    onClick={handleLoadMore}
+                                    whileHover={{ scale: 1.03 }}
+                                    whileTap={{ scale: 0.97 }}
+                                    className="px-4 py-2 bg-gray-100 rounded-full text-gray-700 hover:bg-gray-200"
+                                >
+                                    See More
+                                </motion.button>
+                            </div>
+                        )}
                     </div>
                 )}
             </div>
         </div>
     );
 
-    // Render differently based on whether this is a modal or standalone page
+    // Render component based on mode
     if (isStandalonePage) {
         return (
             <div className="fixed inset-0 bg-white z-50 flex justify-center overflow-auto">
@@ -241,11 +319,15 @@ function SearchByCategory({ isOpen, onClose, initialCategory }) {
     return createPortal(
         <AnimatePresence>
             {isOpen && (
-                <div
+                <motion.div
                     className="fixed inset-0 bg-white z-50 flex justify-center overflow-auto"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.2 }}
                 >
                     {renderContent()}
-                </div>
+                </motion.div>
             )}
         </AnimatePresence>,
         document.body
