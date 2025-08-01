@@ -65,7 +65,7 @@ function SearchByCategory({ isOpen, onClose, initialCategory }) {
         try {
             // Build query params
             const queryParams = {};
-            const limit = 12;
+            const limit = 100;
             const categoryIdToUse = forcedCategoryId || categoryId || params.category;
             
             console.log('Search params debug:', {
