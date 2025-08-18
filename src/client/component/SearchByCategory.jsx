@@ -1,263 +1,233 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { createPortal } from 'react-dom';
 import { AnimatePresence } from 'framer-motion';
 import { IoMdClose } from 'react-icons/io';
+
 import api from "../../utils/axios.js";
-import { useNavigate, useParams } from 'react-router-dom';
 import SearchItem from "./utils/Searchitem.jsx";
-import { createPortal } from 'react-dom';
 import Categoryitem from "./utils/Categoryitem.jsx";
+
+// Define a constant for how many items to fetch per page
+const PAGE_LIMIT = 20;
 
 function SearchByCategory({ isOpen, onClose, initialCategory }) {
     const navigate = useNavigate();
-    const params = useParams();
-    const categoryFromURL = params.category;
+    const { category: categoryFromURL } = useParams();
 
-    // Determine if we're in standalone page mode or modal mode
+    // Determine if the component is running as a standalone page or a modal
     const isStandalonePage = !!categoryFromURL;
     const effectiveCategoryId = categoryFromURL || initialCategory;
 
-    // UI states
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState(null);
-
-    // Filter states
-    const [categoryId, setCategoryId] = useState('');
+    // State for data, loading, and errors
     const [products, setProducts] = useState([]);
     const [selectedCategory, setSelectedCategory] = useState(null);
-    const [offset, setOffset] = useState(0);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
+    
+    // State for pagination
+    const [currentLimit, setCurrentLimit] = useState(PAGE_LIMIT);
     const [hasMore, setHasMore] = useState(true);
 
-    // References
-    const isMounted = useRef(true);
+    // Refs to manage side effects
     const abortControllerRef = useRef(null);
-    const lastCategoryRef = useRef(null); // Used to detect when the category changes
+    const lastFetchedCategory = useRef(null);
 
-    // Navigate to home page when back button is clicked
-    const handleBack = () => {
-        navigate('/');
-    };
+    const handleBack = () => navigate('/');
 
-    // Format product data
+    // Memoized helper to ensure product data has a consistent shape
     const formatProductData = useCallback((product) => {
         if (!product) return null;
-
         return {
             ...product,
-            images: Array.isArray(product.images) ? product.images :
-                (product.images ? [product.images] : []),
-            price: typeof product.price === 'string' ? parseFloat(product.price) :
-                (product.price || 0),
-            discount_percentage: parseFloat(product.discount_percentage || 0),
-            status: product.status || "out_of_stock"
+            images: Array.isArray(product.images) ? product.images : (product.images ? [product.images] : []),
+            price: parseFloat(product.price) || 0,
+            discount_percentage: parseFloat(product.discount_percentage) || 0,
+            status: product.status || "out_of_stock",
         };
     }, []);
-
-    // Search products function
-    const searchProducts = useCallback(async (limitParam = 20, forcedCategoryId = null, offsetParam = null) => {
-        if (!isOpen && !isStandalonePage) return;
-
-        if (abortControllerRef.current) {
-            abortControllerRef.current.abort();
+    
+    // Fetches details of the currently selected category to display its name and description
+    const fetchCategoryDetails = useCallback(async (id) => {
+        if (!id) return;
+        try {
+            const { data } = await api.get(`/categories/${id}`);
+            setSelectedCategory(data);
+        } catch (err) {
+            console.error("Error fetching category details:", err);
+            setSelectedCategory(null); // Reset on error
         }
+    }, []);
 
+    // Core function to fetch products based on the category
+    const fetchProducts = useCallback(async ({ isNewSearch = false } = {}) => {
+        // For "load more", prevent fetching if already loading or no more data exists
+        if (loading || (!isNewSearch && !hasMore)) return;
+        
+        // Abort previous requests to prevent race conditions
+        abortControllerRef.current?.abort();
         abortControllerRef.current = new AbortController();
+
+        const limitToUse = isNewSearch ? PAGE_LIMIT : currentLimit + PAGE_LIMIT;
+
         setLoading(true);
         setError(null);
 
         try {
-            const queryParams = {};
-            const limitToUse = limitParam || 20;
-            const offsetToUse = offsetParam !== null ? offsetParam : offset;
-            const categoryIdToUse = forcedCategoryId || categoryId || params.category;
-            
-            if (!categoryIdToUse) {
-                setLoading(false);
-                return; // Don't search if there's no category
-            }
+            if (!effectiveCategoryId) return;
 
-            queryParams.category_id = categoryIdToUse;
-            queryParams.offset = offsetToUse;
-            queryParams.limit = limitToUse;
-            
-            const endpoint = `/products/search`;
+            // API endpoint format: /products/search/{limit}?category_id={id}
+            const endpoint = `/products/search/${limitToUse}`;
+            const queryParams = { category_id: effectiveCategoryId };
+
             const response = await api.get(endpoint, {
                 params: queryParams,
-                signal: abortControllerRef.current.signal
+                signal: abortControllerRef.current.signal,
             });
 
-            if (isMounted.current) {
-                if (response.data && Array.isArray(response.data)) {
-                    const formattedProducts = response.data
-                        .map(formatProductData)
-                        .filter(Boolean);
+            if (response.data && Array.isArray(response.data)) {
+                const newProducts = response.data.map(formatProductData);
 
-                    // Determine whether to replace the list (new category) or append new items (load more)
-                    const isNewSearch = categoryIdToUse !== lastCategoryRef.current || offsetToUse === 0;
+                // API returns the full list up to the new limit, so we replace the state
+                setProducts(newProducts);
+                setCurrentLimit(limitToUse);
 
-                    if (isNewSearch) {
-                        lastCategoryRef.current = categoryIdToUse;
-                        setProducts(formattedProducts);
-                    } else {
-                        // Append new items for "Load More"
-                        setProducts(prev => [...prev, ...formattedProducts]);
-                    }
-
-                    // Update offset based on the new total length
-                    setOffset(currentOffset => currentOffset + formattedProducts.length);
-                    setHasMore(formattedProducts.length === limitToUse);
-                } else {
-                    setProducts([]);
-                    setError("Invalid response format from server");
-                }
+                // If the returned count is less than the requested limit, we've reached the end
+                setHasMore(newProducts.length === limitToUse);
+            } else {
+                setProducts([]);
+                setHasMore(false);
             }
         } catch (err) {
-            if (err.name !== 'AbortError' && isMounted.current) {
+            // AbortError is expected when a new request cancels an old one, so we ignore it
+            if (err.name !== 'AbortError') {
                 console.error("Search error:", err);
-                setError("Failed to search products. Please try again.");
-                setProducts([]);
+                setError("Failed to fetch products. Please try again.");
             }
         } finally {
-            if (isMounted.current) {
-                setLoading(false);
-            }
+            setLoading(false);
         }
-    // ✅ FIX: Added `offset`, `categoryId`, and `params.category` to the dependency array.
-    // This ensures the function always has the latest state values and isn't "stale".
-    }, [isOpen, isStandalonePage, formatProductData, offset, categoryId, params.category]);
+    }, [currentLimit, hasMore, loading, effectiveCategoryId, formatProductData]);
 
-    // Initialize category search when component mounts or category changes
+    // Effect to trigger a new search when the component opens or the category ID changes
     useEffect(() => {
-        if ((isOpen || isStandalonePage) && effectiveCategoryId) {
-            setCategoryId(effectiveCategoryId);
+        const shouldStartSearch = (isOpen || isStandalonePage) && effectiveCategoryId;
+        const isNewCategory = effectiveCategoryId !== lastFetchedCategory.current;
+
+        if (shouldStartSearch && isNewCategory) {
+            lastFetchedCategory.current = effectiveCategoryId;
             
-            // If the category is different from the last one we searched, reset everything.
-            if (effectiveCategoryId !== lastCategoryRef.current) {
-                setProducts([]); // Clear old products immediately for better UX
-                setOffset(0);
-                searchProducts(20, effectiveCategoryId, 0);
-                fetchCategoryDetails(effectiveCategoryId);
-            }
+            // Reset all state for the new category
+            setProducts([]);
+            setCurrentLimit(PAGE_LIMIT);
+            setHasMore(true);
+            setError(null);
+
+            fetchCategoryDetails(effectiveCategoryId);
+            fetchProducts({ isNewSearch: true });
         }
-
-    }, [isOpen, effectiveCategoryId, isStandalonePage]);
-
-    // Fetch category details
-    const fetchCategoryDetails = async (id) => {
-        if (!id) return;
-        try {
-            const response = await api.get(`/categories/${id}`);
-            if (response.data) {
-                setSelectedCategory(response.data);
-            }
-        } catch (err) {
-            console.error("Error fetching category details:", err);
-        }
-    };
-
-    // Cleanup on unmount
+    }, [isOpen, isStandalonePage, effectiveCategoryId, fetchProducts, fetchCategoryDetails]);
+    
+    // Cleanup effect to abort any pending requests on unmount
     useEffect(() => {
-        isMounted.current = true;
-        return () => {
-            isMounted.current = false;
-            if (abortControllerRef.current) {
-                abortControllerRef.current.abort();
-            }
-        };
+        return () => abortControllerRef.current?.abort();
     }, []);
 
-    const renderContent = () => {
-        const showLoadingSpinner = loading && products.length === 0;
-        const showLoadMoreSpinner = loading && products.length > 0;
-        
+    // --- Rendering Logic ---
+
+    const renderHeader = () => (
+        <div className="flex justify-between items-center p-5 border-b sticky top-0 bg-white z-20 mt-20 md:mt-0">
+            {isStandalonePage ? (
+                <button onClick={handleBack} className="p-2" aria-label="Go back">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M19 12H5" stroke="#333" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        <path d="M12 19L5 12L12 5" stroke="#333" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                </button>
+            ) : null}
+            <h2 className="text-xl font-medium">
+                {selectedCategory?.name || 'Loading Category...'}
+            </h2>
+            {!isStandalonePage ? (
+                <button onClick={onClose} className="p-2 rounded-full hover:bg-gray-100" aria-label="Close">
+                    <IoMdClose className="text-xl"/>
+                </button>
+            ) : <div className="w-10" />} {/* Spacer to balance the header */}
+        </div>
+    );
+    
+    const renderProductList = () => {
+        const showInitialLoading = loading && products.length === 0;
+        const showLoadMoreLoading = loading && products.length > 0;
+
+        if (showInitialLoading) {
+            return (
+                <div className="flex flex-col items-center justify-center py-10">
+                    <div className="w-12 h-12 border-4 border-[#F7A313] border-t-transparent rounded-full animate-spin"></div>
+                    <p className="mt-4 text-gray-600">Loading products...</p>
+                </div>
+            );
+        }
+        if (error && products.length === 0) {
+            return <div className="text-center py-10 text-red-500">{error}</div>;
+        }
+        if (!loading && products.length === 0) {
+            return <div className="text-center py-10 text-gray-600">No products found in this category.</div>;
+        }
+
         return (
+            <>
+                <h3 className="text-sm font-medium text-gray-500 mb-4">{products.length} Results Found</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {products.map((product) => <SearchItem key={product.id} product={product} />)}
+                </div>
+                {hasMore && (
+                    <div className="flex justify-center mt-6">
+                        <button
+                            onClick={() => fetchProducts()}
+                            disabled={loading}
+                            className="px-4 py-2 bg-[#F7A313] text-white rounded-full hover:opacity-90 disabled:opacity-60"
+                        >
+                            {showLoadMoreLoading ? 'Loading...' : 'Load More'}
+                        </button>
+                    </div>
+                )}
+            </>
+        );
+    };
+
+    const content = (
         <div className="max-w-7xl w-full flex flex-col">
             {isStandalonePage && (
                 <div className="fixed left-0 right-0 z-40 bg-white py-3 md:hidden">
                     <Categoryitem />
                 </div>
             )}
-            <div className="flex justify-between items-center p-5 border-b sticky top-0 bg-white z-10 mt-20 md:mt-0">
-                {isStandalonePage && (
-                    <button onClick={handleBack} className="p-2">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M19 12H5" stroke="#333" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                            <path d="M12 19L5 12L12 5" stroke="#333" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
-                    </button>
-                )}
-                <h2 className="text-xl font-medium">
-                    {selectedCategory ? selectedCategory.name : 'Loading Category...'}
-                </h2>
-                {!isStandalonePage && (
-                    <button onClick={onClose} className="p-2 rounded-full hover:bg-gray-100">
-                        <IoMdClose className="text-xl"/>
-                    </button>
-                )}
-                {isStandalonePage && <div className="w-10"></div>}
+            {renderHeader()}
+            <div className="p-5 border-b sticky top-[73px] bg-white z-10">
+                <p className="text-gray-600">{selectedCategory?.description || ''}</p>
             </div>
-            <div className="p-5 ">
-                {selectedCategory && selectedCategory.description && (
-                    <div className="mb-4 text-gray-600">
-                        {selectedCategory.description}
-                    </div>
-                )}
-            </div>
-            <div className="flex-1 overflow-auto p-5 pb-24">
-                {showLoadingSpinner && (
-                    <div className="flex flex-col items-center justify-center py-10">
-                        <div className="w-12 h-12 border-4 border-[#F7A313] border-t-transparent rounded-full animate-spin"></div>
-                        <p className="mt-4 text-gray-600">Loading products...</p>
-                    </div>
-                )}
-                {error && !loading && products.length === 0 && (
-                    <div className="text-center py-10">
-                        <p className="text-red-500">{error}</p>
-                    </div>
-                )}
-                {!loading && !error && products.length === 0 && (
-                    <div className="text-center py-10">
-                        <p className="text-gray-600">No products found in this category.</p>
-                    </div>
-                )}
-                {products.length > 0 && (
-                    <div>
-                        <h3 className="text-sm font-medium text-gray-500 mb-4">{products.length} Results Found</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {products.map((product) => (
-                                <SearchItem key={product.id} product={product} />
-                            ))}
-                        </div>
-                        {hasMore && (
-                            <div className="flex justify-center mt-6">
-                                <button
-                                    onClick={() => searchProducts()}
-                                    disabled={loading}
-                                    className="px-4 py-2 bg-[#F7A313] text-white rounded-full hover:opacity-90 disabled:opacity-60"
-                                >
-                                    {showLoadMoreSpinner ? 'Loading...' : 'Load More'}
-                                </button>
-                            </div>
-                        )}
-                    </div>
-                )}
-            </div>
+            <main className="flex-1 p-5 pb-24">
+                {renderProductList()}
+            </main>
         </div>
-        );
-    };
+    );
 
+    // Render as a standalone page
     if (isStandalonePage) {
         return (
             <div className="fixed inset-0 bg-white z-50 flex justify-center overflow-auto">
-                {renderContent()}
+                {content}
             </div>
         );
     }
 
+    // Render as a modal using a portal
     return createPortal(
         <AnimatePresence>
             {isOpen && (
                 <div className="fixed inset-0 bg-white z-50 flex justify-center overflow-auto">
-                    {renderContent()}
+                    {content}
                 </div>
             )}
         </AnimatePresence>,
