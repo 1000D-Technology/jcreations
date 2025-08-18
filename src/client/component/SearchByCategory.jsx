@@ -204,7 +204,7 @@ function SearchByCategory({ isOpen, onClose, initialCategory }) {
                 </div>
             )}
             {renderHeader()}
-            <div className="p-5 border-b sticky top-[73px] bg-white z-10">
+            <div className="p-5 pt-0 sticky top-[73px] bg-white z-10">
                 <p className="text-gray-600">{selectedCategory?.description || ''}</p>
             </div>
             <main className="flex-1 p-5 pb-24">
