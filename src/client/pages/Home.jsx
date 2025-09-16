@@ -5,6 +5,7 @@ import Category from "../component/Category.jsx";
 import Allproducts from '../component/Allproducts.jsx';
 import Search from "../component/Search.jsx";
 import DailyDeals from "../component/DailyDeals.jsx";
+import Carousel from "../component/Carousel.jsx";
 
 function Home() {
     // State for search modal and selected category
@@ -24,6 +25,7 @@ function Home() {
             <main>
                 <Hero />
                 <Category onCategoryClick={handleCategoryClick} />
+                <Carousel />
                 <DailyDeals/>
                 <Newarrivals />
                 <Allproducts />
