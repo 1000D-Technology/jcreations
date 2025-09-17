@@ -11,6 +11,7 @@ const Banners = () => {
   const [error, setError] = useState(null);
   const [currentDateTime, setCurrentDateTime] = useState(new Date());
   const [currentBanners, setCurrentBanners] = useState({ mobile: null, desktop: null });
+  const [featuredBanners, setFeaturedBanners] = useState([]);
   const [fetchLoading, setFetchLoading] = useState(true);
   const [bannerForm, setBannerForm] = useState({
     type: 'mobile',
@@ -36,7 +37,19 @@ const Banners = () => {
       }
     };
 
+    const fetchFeaturedBanners = async () => {
+      try {
+        const response = await api.get('/featured-banners');
+        if (response.status === 200 && response.data) {
+          setFeaturedBanners(response.data);
+        }
+      } catch (err) {
+        console.error('Error fetching featured banners:', err);
+      }
+    };
+
     fetchCurrentBanners();
+    fetchFeaturedBanners();
   }, []);
 
   // Update time every minute
@@ -115,6 +128,48 @@ const Banners = () => {
       link: ''
     });
   };
+
+  const toggleBannerStatus = async (bannerId, currentStatus) => {
+    try {
+      // Using the same API pattern for mobile/desktop banners
+      const response = await api.patch(`/admin/banner/${bannerId}/toggle`, {
+        is_active: !currentStatus
+      });
+      
+      if (response.status === 200) {
+        toast.success(`Banner ${!currentStatus ? 'activated' : 'deactivated'} successfully`);
+        // Refresh featured banners
+        const featuredResponse = await api.get('/featured-banners');
+        if (featuredResponse.status === 200 && featuredResponse.data) {
+          setFeaturedBanners(featuredResponse.data);
+        }
+      }
+    } catch (err) {
+      console.error('Error toggling banner status:', err);
+      toast.error('Failed to update banner status');
+    }
+  };
+
+  const deleteFeaturedBanner = async (bannerId) => {
+    if (window.confirm('Are you sure you want to delete this banner?')) {
+      try {
+        // Using admin endpoint for featured banner deletion
+        const response = await api.delete(`/admin/banner/featured/${bannerId}`);
+        
+        if (response.status === 200) {
+          toast.success('Banner deleted successfully');
+          // Refresh featured banners
+          const featuredResponse = await api.get('/featured-banners');
+          if (featuredResponse.status === 200 && featuredResponse.data) {
+            setFeaturedBanners(featuredResponse.data);
+          }
+        }
+      } catch (err) {
+        console.error('Error deleting banner:', err);
+        toast.error('Failed to delete banner');
+      }
+    }
+  };
   const validateForm = () => {
     if (!newBannerFile) {
       toast.error('Please select a banner image');
@@ -149,10 +204,17 @@ const Banners = () => {
       if (response.status === 200 || response.status === 201) {
         toast.success('Banner uploaded successfully');
 
-        // Refresh current banners after successful upload
-        const bannerResponse = await api.get('/banner');
-        if (bannerResponse.status === 200 && bannerResponse.data) {
-          setCurrentBanners(bannerResponse.data);
+        // Refresh banners after successful upload
+        if (bannerForm.type === 'featured') {
+          const featuredResponse = await api.get('/featured-banners');
+          if (featuredResponse.status === 200 && featuredResponse.data) {
+            setFeaturedBanners(featuredResponse.data);
+          }
+        } else {
+          const bannerResponse = await api.get('/banner');
+          if (bannerResponse.status === 200 && bannerResponse.data) {
+            setCurrentBanners(bannerResponse.data);
+          }
         }
 
         handleCancel();
@@ -278,6 +340,88 @@ const Banners = () => {
               </div>
             </div>
 
+            {/* Featured Banners Display */}
+            <div className="px-6 mb-6">
+              <h4 className="text-lg font-medium text-gray-800 mb-4 flex items-center">
+                Featured Banners 
+                <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
+                  {featuredBanners.length} total
+                </span>
+              </h4>
+              
+              {featuredBanners.length === 0 ? (
+                <div className="bg-gray-50 rounded-lg p-8 text-center">
+                  <div className="text-gray-400 mb-2">
+                    <svg className="mx-auto h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                  </div>
+                  <h3 className="text-lg font-medium text-gray-900 mb-1">No featured banners</h3>
+                  <p className="text-gray-500">Add your first featured banner to get started</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {featuredBanners.map((banner) => (
+                    <div key={banner.id} className="bg-white rounded-lg shadow-md overflow-hidden border">
+                      <div className="relative">
+                        <img
+                          src={`${storageUrl}/${banner.image_path}`}
+                          alt={banner.title}
+                          className="w-full h-48 object-cover"
+                          onError={(e) => {
+                            e.target.onerror = null;
+                            e.target.src = "/hero/home back.webp";
+                          }}
+                        />
+                        
+                        {/* Status Badge */}
+                        <div className="absolute top-2 left-2">
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            banner.is_active 
+                              ? 'bg-green-100 text-green-800' 
+                              : 'bg-red-100 text-red-800'
+                          }`}>
+                            {banner.is_active ? 'Active' : 'Inactive'}
+                          </span>
+                        </div>
+
+                        {/* Action Buttons */}
+                        <div className="absolute top-2 right-2 flex space-x-1">
+                          <button
+                            onClick={() => deleteFeaturedBanner(banner.id)}
+                            className="p-2 rounded-full bg-red-500 hover:bg-red-600 text-white text-xs"
+                            title="Delete"
+                          >
+                            <FaTrash size={10} />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Banner Info */}
+                      <div className="p-4">
+                        <h5 className="font-semibold text-gray-900 mb-1 truncate">{banner.title}</h5>
+                        {banner.subtitle && (
+                          <p className="text-sm text-gray-600 mb-2 truncate">{banner.subtitle}</p>
+                        )}
+                        
+                        {/* Metadata */}
+                        <div className="mt-3 pt-3 border-t border-gray-100">
+                          <p className="text-xs text-gray-500">
+                            Created: {new Date(banner.created_at).toLocaleDateString()}
+                          </p>
+                          {banner.updated_at !== banner.created_at && (
+                            <p className="text-xs text-gray-500">
+                              Updated: {new Date(banner.updated_at).toLocaleDateString()}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
             <h3 className="mb-3 px-6 text-lg font-light text-[#333333]">Upload New Banner</h3>
 
             {/* Banner Form */}
@@ -296,6 +440,7 @@ const Banners = () => {
                   >
                     <option value="mobile">Mobile</option>
                     <option value="desktop">Desktop</option>
+                    <option value="featured">Featured</option>
                   </select>
                 </div>
 
@@ -382,7 +527,9 @@ const Banners = () => {
                           <FiUpload size={42} className="text-gray-400 mb-2" />
                           <p className="text-sm text-gray-700 font-medium">Drag and drop your new banner</p>
                           <p className="text-xs text-gray-500 mt-1">
-                            Recommended: Mobile (375x200px), Desktop (1200x400px) - Max 2MB
+                            {bannerForm.type === 'mobile' && 'Recommended: Mobile (375x200px) - Max 2MB'}
+                            {bannerForm.type === 'desktop' && 'Recommended: Desktop (1200x400px) - Max 2MB'}
+                            {bannerForm.type === 'featured' && 'Recommended: Featured (800x600px) - Max 2MB'}
                           </p>
                         </div>
                       </label>
