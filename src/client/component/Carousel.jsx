@@ -7,6 +7,8 @@ const Carousel = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  const storageUrl = import.meta.env.VITE_STORAGE_URL;
+
   // Fetch featured banners from API
   useEffect(() => {
     const fetchBanners = async () => {
@@ -47,7 +49,12 @@ const Carousel = () => {
 
   const handleBannerClick = (banner) => {
     if (banner.link) {
-      window.open(banner.link, '_blank');
+      // Handle different link formats
+      let url = banner.link;
+      if (!url.startsWith('http://') && !url.startsWith('https://')) {
+        url = 'https://' + url;
+      }
+      window.open(url, '_blank', 'noopener,noreferrer');
     }
   };
 
@@ -61,7 +68,7 @@ const Carousel = () => {
   }
 
   return (
-    <div className="relative w-full max-w-7xl mx-auto mt-10 mb-10">
+    <div className="relative w-full max-w-7xl  mx-auto mt-10 mb-10">
       
       {/* Mobile View - Carousel */}
       <div className="block md:hidden">
@@ -69,29 +76,23 @@ const Carousel = () => {
           {banners.map((banner, index) => (
             <div
               key={banner.id}
-              className={`absolute inset-0 transition-opacity duration-1000 ease-in-out cursor-pointer ${
+              className={`absolute inset-0 mx-5 transition-opacity duration-1000 ease-in-out ${
+                banner.link ? 'cursor-pointer' : ''
+              } ${
                 index === currentSlide ? 'opacity-100' : 'opacity-0'
               }`}
               onClick={() => handleBannerClick(banner)}
             >
               <img
-                src={`${import.meta.env.VITE_API_URL}/storage/${banner.image_path}`}
+                src={`${storageUrl}/${banner.image_path}`}
                 className="absolute block w-full h-full object-cover"
-                alt={banner.title || 'Featured Banner'}
+                alt="Featured Banner"
+                onError={(e) => {
+                  e.target.onerror = null;
+                  e.target.src = "/hero/home back.webp";
+                  console.error("Failed to load banner image:", banner.image_path);
+                }}
               />
-              {/* Banner content overlay */}
-              {(banner.title || banner.subtitle) && (
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent">
-                  <div className="absolute bottom-4 left-4 text-white">
-                    {banner.title && (
-                      <h3 className="text-lg font-semibold mb-1">{banner.title}</h3>
-                    )}
-                    {banner.subtitle && (
-                      <p className="text-sm opacity-90">{banner.subtitle}</p>
-                    )}
-                  </div>
-                </div>
-              )}
             </div>
           ))}
         </div>
@@ -120,29 +121,23 @@ const Carousel = () => {
         {banners.map((banner) => (
           <div
             key={banner.id}
-            className="relative overflow-hidden rounded-lg shadow-lg hover:shadow-xl transition-shadow duration-300 cursor-pointer group"
+            className={`relative overflow-hidden rounded-lg shadow-lg hover:shadow-xl transition-shadow duration-300 group ${
+              banner.link ? 'cursor-pointer' : ''
+            }`}
             onClick={() => handleBannerClick(banner)}
           >
             <div className="aspect-[4/3] overflow-hidden">
               <img
-                src={`${import.meta.env.VITE_API_URL}/storage/${banner.image_path}`}
+                src={`${storageUrl}/${banner.image_path}`}
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                alt={banner.title || 'Featured Banner'}
+                alt="Featured Banner"
+                onError={(e) => {
+                  e.target.onerror = null;
+                  e.target.src = "/hero/home back.webp";
+                  console.error("Failed to load banner image:", banner.image_path);
+                }}
               />
             </div>
-            {/* Banner content overlay */}
-            {(banner.title || banner.subtitle) && (
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent">
-                <div className="absolute bottom-4 left-4 text-white">
-                  {banner.title && (
-                    <h3 className="text-lg font-semibold mb-1">{banner.title}</h3>
-                  )}
-                  {banner.subtitle && (
-                    <p className="text-sm opacity-90">{banner.subtitle}</p>
-                  )}
-                </div>
-              </div>
-            )}
           </div>
         ))}
       </div>
