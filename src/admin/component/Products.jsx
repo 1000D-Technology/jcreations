@@ -35,6 +35,9 @@ function Products() {
     // Daily deals update state
     const [updatingDailyDeals, setUpdatingDailyDeals] = useState(null);
 
+    // Featured product update state
+    const [updatingFeatured, setUpdatingFeatured] = useState(null);
+
     // Check admin authentication
     useEffect(() => {
         if (!user || !user.roles || !user.roles.includes('admin')) {
@@ -274,6 +277,47 @@ function Products() {
         }
     };
 
+    const updateFeaturedStatus = async (productId, isActive) => {
+        setUpdatingFeatured(productId);
+        try {
+            const token = user?.token;
+            const status = isActive ? 'active' : 'deactive';
+
+            const response = await api.put(`/admin/products/${productId}`, 
+                { featured: status },
+                {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                }
+            );
+
+            if (response.status === 200) {
+                console.log('Featured status update response:', response.data);
+                toast.success(`Product ${isActive ? 'set as' : 'removed from'} featured`);
+
+                // Update the local state with the new featured status
+                setProducts(prevProducts =>
+                    prevProducts.map(product =>
+                        product.id === productId ? {...product, featured: status} : product
+                    )
+                );
+            }
+        } catch (error) {
+            console.error('Error updating featured status:', error);
+            const errorMessage = error.response?.data?.message || error.message;
+            toast.error(`Failed to update featured status: ${errorMessage}`);
+
+            if (error.response) {
+                console.log('Error response:', error.response.data);
+                console.log('Status code:', error.response.status);
+            }
+        } finally {
+            setUpdatingFeatured(null);
+        }
+    };
+
     const handleAddProductClick = () => {
         setShowAddForm(true);
         setUpdateProduct(null);
@@ -415,6 +459,17 @@ function Products() {
                                 </p>
                             </div>
                         </div>
+                        <div className="flex items-center gap-4 p-4 bg-white shadow-md rounded-xl w-60">
+                            <div className="p-3 bg-green-100 rounded-full">
+                                <LuCodesandbox size={20} className="text-green-600 text-xl"/>
+                            </div>
+                            <div>
+                                <p className="text-sm text-gray-500">Featured Products</p>
+                                <p className="text-lg font-semibold">
+                                    {products.filter(p => p.featured === 'active').length}
+                                </p>
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}
@@ -527,25 +582,26 @@ function Products() {
                                             <table className="min-w-full divide-y divide-gray-200 table-fixed">                                                <thead className="bg-white sticky top-0 z-10 shadow-sm">
                                                 <tr>
                                                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider w-[5%]">ID</th>
-                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider w-[18%]">Product Name</th>
-                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider w-[12%]">Category</th>
+                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider w-[16%]">Product Name</th>
+                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider w-[10%]">Category</th>
                                                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider w-[8%]">Price</th>
                                                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider w-[8%]">Discount</th>
-                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider w-[8%]">Image</th>
-                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider w-[8%]">More</th>
-                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider w-[8%]">Update</th>
-                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider w-[12%]">Daily Deals</th>
-                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider w-[13%]">Status</th>
+                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider w-[6%]">Image</th>
+                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider w-[6%]">More</th>
+                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider w-[6%]">Update</th>
+                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider w-[10%]">Daily Deals</th>
+                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider w-[10%]">Featured</th>
+                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider w-[15%]">Status</th>
                                                 </tr>
                                                 </thead>
                                                 <tbody className="bg-white divide-y divide-gray-200">                                                {currentItems.map((product) => (
                                                     <tr key={product.id} className="hover:bg-gray-50">
                                                         <td className="px-4 py-3 whitespace-nowrap w-[5%]">{product.id}</td>
-                                                        <td className="px-4 py-3 whitespace-nowrap w-[18%]">{product.name}</td>
-                                                        <td className="px-4 py-3 whitespace-nowrap w-[12%]">{product.category?.name || product.category_id}</td>
+                                                        <td className="px-4 py-3 whitespace-nowrap w-[16%]">{product.name}</td>
+                                                        <td className="px-4 py-3 whitespace-nowrap w-[10%]">{product.category?.name || product.category_id}</td>
                                                         <td className="px-4 py-3 whitespace-nowrap w-[8%]">Rs.{parseFloat(product.price).toFixed(2)}</td>
                                                         <td className="px-4 py-3 whitespace-nowrap w-[8%]">{product.discount_percentage || 0}%</td>
-                                                        <td className="px-4 py-3 whitespace-nowrap w-[8%]">
+                                                        <td className="px-4 py-3 whitespace-nowrap w-[6%]">
                                                             <img
                                                                 src={
                                                                     product.images
@@ -565,7 +621,7 @@ function Products() {
                                                                 }}
                                                             />
                                                         </td>
-                                                        <td className="px-4 py-3 whitespace-nowrap w-[8%]">
+                                                        <td className="px-4 py-3 whitespace-nowrap w-[6%]">
                                                             <button
                                                                 onClick={() => handlePreviewClick(product)}
                                                                 className="w-full h-full flex justify-center items-center cursor-pointer"
@@ -575,7 +631,7 @@ function Products() {
                                                                     className="text-blue-400 text-lg hover:text-blue-600"/>
                                                             </button>
                                                         </td>
-                                                        <td className="px-4 py-3 whitespace-nowrap w-[8%]">
+                                                        <td className="px-4 py-3 whitespace-nowrap w-[6%]">
                                                             <button
                                                                 onClick={() => handleUpdateProductClick(product)}
                                                                 className="w-full h-full flex justify-center items-center cursor-pointer"
@@ -584,7 +640,7 @@ function Products() {
                                                                 <AiOutlineReload className="text-yellow-500 text-lg hover:text-yellow-600"/>
                                                             </button>
                                                         </td>
-                                                        <td className="px-4 py-3 whitespace-nowrap w-[12%]">
+                                                        <td className="px-4 py-3 whitespace-nowrap w-[10%]">
                                                             <div className="flex justify-center items-center">
                                                                 {updatingDailyDeals === product.id ? (
                                                                     <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-blue-500"></div>
@@ -603,7 +659,26 @@ function Products() {
                                                                 )}
                                                             </div>
                                                         </td>
-                                                        <td className="px-4 py-3 whitespace-nowrap w-[13%]">
+                                                        <td className="px-4 py-3 whitespace-nowrap w-[10%]">
+                                                            <div className="flex justify-center items-center">
+                                                                {updatingFeatured === product.id ? (
+                                                                    <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-green-500"></div>
+                                                                ) : (
+                                                                    <label className="flex items-center cursor-pointer">
+                                                                        <input
+                                                                            type="checkbox"
+                                                                            checked={product.featured === 'active'}
+                                                                            onChange={(e) => updateFeaturedStatus(product.id, e.target.checked)}
+                                                                            className="w-4 h-4 text-green-600 bg-gray-100 border-gray-300 rounded focus:ring-green-500 focus:ring-2"
+                                                                        />
+                                                                        <span className="ml-2 text-sm text-gray-700">
+                                                                            {product.featured === 'active' ? 'Active' : 'Inactive'}
+                                                                        </span>
+                                                                    </label>
+                                                                )}
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-4 py-3 whitespace-nowrap w-[15%]">
                                                             {updatingStatus === product.id ? (
                                                                 <div className="w-full flex justify-center">
                                                                     <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-amber-500"></div>
